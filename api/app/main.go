@@ -88,10 +88,11 @@ func main() {
 		os.Getenv("WEBHOOK_BASE_URL"), calendarService, logger)
 	mysqlRepo := mysql.NewMysqlRepository(db, clockService, logger)
 
+	calendarUsecase := usecase.NewCalendarUsecase(mysqlRepo, logger)
 	syncUsecase := usecase.NewSyncUsecase(clockService, googleCalendarRepo, mysqlRepo, logger)
 	watchUsecase := usecase.NewWatchUsecase(googleCalendarRepo, mysqlRepo, logger)
 
-	handler := echohandler.New(syncUsecase, watchUsecase, logger)
+	handler := echohandler.New(calendarUsecase, syncUsecase, watchUsecase, logger)
 
 	e := echo.New()
 	e.HideBanner = true

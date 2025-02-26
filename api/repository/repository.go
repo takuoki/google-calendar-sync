@@ -26,6 +26,9 @@ type DatabaseRepository interface {
 }
 
 type DatabaseTransaction interface {
+	// calendars
+	CreateCalendar(ctx context.Context, calendar entity.Calendar) error
+
 	// channels
 	ListActiveChannels(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Channel, error)
 	CreateChannel(ctx context.Context, channel entity.Channel) error

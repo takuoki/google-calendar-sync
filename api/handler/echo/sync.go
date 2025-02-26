@@ -15,7 +15,7 @@ func (h *handler) PostSyncCalendarId(c echo.Context, calendarID string) error {
 	resourceState := c.Request().Header.Get("X-Goog-Resource-State")
 	if resourceState != "exists" {
 		h.logger.Infof(ctx, "skip (resource state: %q)", resourceState)
-		return success(c)
+		return skipped(c)
 	}
 
 	if err := h.syncUsecase.Sync(ctx, valueobject.CalendarID(calendarID)); err != nil {

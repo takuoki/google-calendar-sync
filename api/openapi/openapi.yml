@@ -3,6 +3,46 @@ info:
   title: Google Calendar Sync API
   version: 0.1.0
 paths:
+  /calendars/{calendarId}/:
+    post:
+      summary: Create a new calendar
+      tags:
+        - Calendar
+      parameters:
+        - name: calendarId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Calendar created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+        '401':
+          description: Calendar already exists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: Calendar already exists
   /sync/{calendarId}/:
     post:
       summary: Sync calendar information with local DB

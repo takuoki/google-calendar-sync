@@ -28,3 +28,17 @@ func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobjec
 
 	return &calendar, nil
 }
+
+func (tx *mysqlTransaction) CreateCalendar(ctx context.Context, calendar entity.Calendar) error {
+	_, err := tx.tx.ExecContext(
+		ctx,
+		"INSERT INTO calendars (id, name) VALUES (?, ?)",
+		calendar.ID, calendar.Name,
+	)
+
+	if err != nil {
+		return fmt.Errorf("fail to insert calendar: %w", err)
+	}
+
+	return nil
+}

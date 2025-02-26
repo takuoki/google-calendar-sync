@@ -8,19 +8,22 @@ import (
 )
 
 type handler struct {
-	syncUsecase  usecase.SyncUsecase
-	watchUsecase usecase.WatchUsecase
-	logger       applog.Logger
+	calendarUsecase usecase.CalendarUsecase
+	syncUsecase     usecase.SyncUsecase
+	watchUsecase    usecase.WatchUsecase
+	logger          applog.Logger
 }
 
 func New(
+	calendarUsecase usecase.CalendarUsecase,
 	syncUsecase usecase.SyncUsecase,
 	watchUsecase usecase.WatchUsecase,
 	logger applog.Logger,
 ) openapi.ServerInterface {
 	return &handler{
-		syncUsecase:  syncUsecase,
-		watchUsecase: watchUsecase,
-		logger:       logger,
+		calendarUsecase: calendarUsecase,
+		syncUsecase:     syncUsecase,
+		watchUsecase:    watchUsecase,
+		logger:          logger,
 	}
 }

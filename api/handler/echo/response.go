@@ -18,6 +18,13 @@ func success(c echo.Context) error {
 	return c.JSON(http.StatusOK, response)
 }
 
+func skipped(c echo.Context) error {
+	response := Response{
+		Status: "skipped",
+	}
+	return c.JSON(http.StatusOK, response)
+}
+
 func failure(c echo.Context, status int, message string) error {
 	response := Response{
 		Status:  "error",
