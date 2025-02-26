@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: ./api
+    container_name: calendar-api
+    restart: unless-stopped
+    environment:
+      PORT: 8080
+      LOG_LEVEL: Debug
+      GOOGLE_APPLICATION_CREDENTIALS: /credentials.json
+      DB_HOST: calendar-db
+      DB_PORT: 3306
+      DB_USER: appuser
+      DB_PASSWORD: password
+      DB_NAME: app
+      WEBHOOK_BASE_URL: http://localhost:8080/api/sync
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+  mysql:
+    image: mysql:8.0
+    container_name: calendar-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: app
+      MYSQL_USER: appuser                
+      MYSQL_PASSWORD: password        
+      MYSQL_ROOT_PASSWORD: rootpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: --default-authentication-plugin=mysql_native_password
