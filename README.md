@@ -18,7 +18,7 @@ cd google-calendar-sync
 
 2. サービスアカウントの鍵ファイル（JSON 形式）を、下記に配置します。
 
-> api/credentials.json
+- api/credentials.json
 
 3. アプリケーションを起動します。
 
@@ -39,8 +39,14 @@ curl --location --request POST 'http://localhost:8080/api/sync/sample@sample.com
   --header 'X-Goog-Resource-State: exists'
 ```
 
+- 初回は存在する全データの同期、2 回目以降は差分データのみの同期となります。
+
 5. データベースに接続し、結果を確認します。
 
 ```sh
 mysql -h 127.0.0.1 -P 3306 -u appuser -ppassword -D app
 ```
+
+## Additional Information
+
+- Google カレンダーの予定の更新を検知し、Webhook を発火させる仕組みがありますが、ローカル環境では確認できません。
