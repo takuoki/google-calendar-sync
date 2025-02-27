@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
+	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	calendar "google.golang.org/api/calendar/v3"
 )
 
-func (r *googleCalendarRepository) StopWatch(
-	ctx context.Context, channelID valueobject.ChannelID) error {
+func (r *googleCalendarRepository) StopWatch(ctx context.Context, channel entity.Channel) error {
 
 	err := r.service.Channels.Stop(&calendar.Channel{
-		Id: string(channelID),
+		Id:         channel.CalendarID.ToChannelID(),
+		ResourceId: string(channel.ResourceID),
 	}).Context(ctx).Do()
 
 	if err != nil {

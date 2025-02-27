@@ -7,7 +7,8 @@ import (
 )
 
 type Channel struct {
-	ID         valueobject.ChannelID
 	CalendarID valueobject.CalendarID
+	ResourceID valueobject.ResourceID
+	StartTime  time.Time
 	Expiration time.Time
 }

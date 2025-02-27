@@ -85,7 +85,7 @@ func main() {
 	clockService := service.NewClock()
 
 	googleCalendarRepo := googlecalendar.NewGoogleCalendarRepository(
-		os.Getenv("WEBHOOK_BASE_URL"), calendarService, logger)
+		os.Getenv("WEBHOOK_BASE_URL"), calendarService, clockService, logger)
 	mysqlRepo := mysql.NewMysqlRepository(db, clockService, logger)
 
 	calendarUsecase := usecase.NewCalendarUsecase(mysqlRepo, logger)

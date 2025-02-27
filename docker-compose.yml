@@ -15,7 +15,7 @@ services:
       DB_USER: appuser
       DB_PASSWORD: password
       DB_NAME: app
-      WEBHOOK_BASE_URL: http://localhost:8080/api/sync
+      WEBHOOK_BASE_URL: https://sample.com/api/sync
     ports:
       - "8080:8080"
     depends_on:

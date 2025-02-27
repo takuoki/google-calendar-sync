@@ -7,20 +7,23 @@ import (
 	calendar "google.golang.org/api/calendar/v3"
 
 	"github.com/takuoki/golib/applog"
+	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/repository"
 )
 
 type googleCalendarRepository struct {
 	webhookBaseURL string
 	service        *calendar.Service
+	clockService   service.Clock
 	logger         applog.Logger
 }
 
 func NewGoogleCalendarRepository(webhookBaseURL string, service *calendar.Service,
-	logger applog.Logger) repository.GoogleCalendarRepository {
+	clockService service.Clock, logger applog.Logger) repository.GoogleCalendarRepository {
 	return &googleCalendarRepository{
 		webhookBaseURL: webhookBaseURL,
 		service:        service,
+		clockService:   clockService,
 		logger:         logger,
 	}
 }

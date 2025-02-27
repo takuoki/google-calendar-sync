@@ -9,10 +9,17 @@ import (
 )
 
 type GoogleCalendarRepository interface {
-	ListEvents(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, string, error)
-	ListEventsWithSyncToken(ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error)
+	// events
+	ListEvents(ctx context.Context, calendarID valueobject.CalendarID) (
+		events []entity.Event, nextSyncToken string, err error)
+
+	ListEventsWithSyncToken(ctx context.Context, calendarID valueobject.CalendarID, syncToken string) (
+		events []entity.Event, nextSyncToken string, err error)
+
 	Watch(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error)
-	StopWatch(ctx context.Context, channelID valueobject.ChannelID) error
+
+	// channels
+	StopWatch(ctx context.Context, channel entity.Channel) error
 }
 
 type DatabaseRepository interface {
@@ -22,20 +29,20 @@ type DatabaseRepository interface {
 	GetCalendar(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Calendar, error)
 
 	// sync_histories
-	GetLatestSyncToken(ctx context.Context, calendarID valueobject.CalendarID) (string, error)
+	GetLatestSyncToken(ctx context.Context, calendarID valueobject.CalendarID) (syncToken string, err error)
 }
 
 type DatabaseTransaction interface {
 	// calendars
 	CreateCalendar(ctx context.Context, calendar entity.Calendar) error
 
-	// channels
-	ListActiveChannels(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Channel, error)
-	CreateChannel(ctx context.Context, channel entity.Channel) error
-	StopChannel(ctx context.Context, channelID valueobject.ChannelID) error
-
 	// events
-	SyncEvents(ctx context.Context, events []entity.Event) (int, error)
+	SyncEvents(ctx context.Context, events []entity.Event) (updatedCount int, err error)
+
+	// channel_histories
+	ListActiveChannelHistoriesWithLock(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Channel, error)
+	CreateChannelHistory(ctx context.Context, channel entity.Channel) error
+	StopActiveChannels(ctx context.Context, calendarID valueobject.CalendarID) error
 
 	// sync_histories
 	CreateSyncHistory(

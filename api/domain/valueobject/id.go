@@ -1,16 +1,13 @@
 package valueobject
 
-import (
-	"fmt"
-	"time"
-)
+import "encoding/base64"
 
 type CalendarID string
 
 func (c CalendarID) ToChannelID() string {
-	return fmt.Sprintf("%s-%s", c, time.Now().Format("20060102150405"))
+	return base64.StdEncoding.EncodeToString([]byte(c))
 }
 
-type ChannelID string
-
 type EventID string
+
+type ResourceID string

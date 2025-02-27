@@ -76,9 +76,9 @@ func (r *googleCalendarRepository) listEvents(
 	return res, syncToken, nil
 }
 
-func (r *googleCalendarRepository) Watch(
-	ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error) {
+func (r *googleCalendarRepository) Watch(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error) {
 
+	// TODO: ttl の設定を追加したい
 	request := calendar.Channel{
 		Id:      calendarID.ToChannelID(),
 		Type:    "web_hook",
@@ -96,8 +96,9 @@ func (r *googleCalendarRepository) Watch(
 	}
 
 	return &entity.Channel{
-		ID:         valueobject.ChannelID(channel.Id),
 		CalendarID: calendarID,
+		ResourceID: valueobject.ResourceID(channel.ResourceId),
+		StartTime:  r.clockService.Now(),
 		Expiration: expiration,
 	}, nil
 }
