@@ -5,19 +5,6 @@ CREATE TABLE IF NOT EXISTS calendars (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS channels (
-    id VARCHAR(255) NOT NULL,
-    calendar_id VARCHAR(255),
-    expiry TIMESTAMP NOT NULL,
-    is_stopped BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
-    FOREIGN KEY (calendar_id) REFERENCES calendars(id),
-    INDEX idx_calendar_expiry (calendar_id, expiry)
-);
-
-
 CREATE TABLE IF NOT EXISTS events (
     id VARCHAR(255) NOT NULL,
     calendar_id VARCHAR(255),
@@ -29,6 +16,19 @@ CREATE TABLE IF NOT EXISTS events (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     FOREIGN KEY (calendar_id) REFERENCES calendars(id)
+);
+
+CREATE TABLE IF NOT EXISTS channel_hisotries (
+    calendar_id VARCHAR(255),
+    start_time TIMESTAMP NOT NULL,
+    resource_id VARCHAR(255) NOT NULL,
+    expiration TIMESTAMP NOT NULL,
+    is_stopped BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (calendar_id, start_time),
+    FOREIGN KEY (calendar_id) REFERENCES calendars(id),
+    INDEX idx_calendar_expiration (calendar_id, expiration)
 );
 
 CREATE TABLE IF NOT EXISTS sync_histories (

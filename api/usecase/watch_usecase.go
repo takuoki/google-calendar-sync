@@ -35,20 +35,26 @@ func NewWatchUsecase(
 func (u *watchUsecase) Start(ctx context.Context, calendarID valueobject.CalendarID) error {
 
 	if _, err := u.databaseRepo.GetCalendar(ctx, calendarID); err != nil {
+		// TODO: ClientError
 		return fmt.Errorf("fail to get calendar: %w", err)
 	}
 
-	channel, err := u.googleCalenderRepo.Watch(ctx, calendarID)
-	if err != nil {
-		return fmt.Errorf("fail to watch calendar: %w", err)
-	}
+	err := u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
 
-	err = u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
+		if err := u.stopIfExistActiveChannel(ctx, tx, calendarID); err != nil {
+			return fmt.Errorf("fail to stop: %w", err)
+		}
 
-		// TODO: 既に登録されている Channel が存在する場合は停止させたい
+		channel, err := u.googleCalenderRepo.Watch(ctx, calendarID)
+		if err != nil {
+			return fmt.Errorf("fail to watch calendar: %w", err)
+		}
+		if channel == nil {
+			return fmt.Errorf("fail to watch calendar: channel is nil")
+		}
 
-		if err := tx.CreateChannel(ctx, *channel); err != nil {
-			return fmt.Errorf("fail to create channel: %w", err)
+		if err := tx.CreateChannelHistory(ctx, *channel); err != nil {
+			return fmt.Errorf("fail to create channel history: %w", err)
 		}
 
 		return nil
@@ -64,33 +70,50 @@ func (u *watchUsecase) Start(ctx context.Context, calendarID valueobject.Calenda
 func (u *watchUsecase) Stop(ctx context.Context, calendarID valueobject.CalendarID) error {
 
 	if _, err := u.databaseRepo.GetCalendar(ctx, calendarID); err != nil {
+		// TODO: ClientError
 		return fmt.Errorf("fail to get calendar: %w", err)
 	}
 
 	err := u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
-
-		channels, err := tx.ListActiveChannels(ctx, calendarID)
-		if err != nil {
-			return fmt.Errorf("fail to list active channels: %w", err)
+		if err := u.stopIfExistActiveChannel(ctx, tx, calendarID); err != nil {
+			return fmt.Errorf("fail to stop: %w", err)
 		}
-
-		for _, channel := range channels {
-			// API のみ成功し DB 更新が失敗した場合にステータス不整合が発生するが、
-			// いずれ有効期限が切れるものなので許容する
-			if err := u.googleCalenderRepo.StopWatch(ctx, channel.ID); err != nil {
-				return fmt.Errorf("fail to stop watch: %w", err)
-			}
-
-			if err := tx.StopChannel(ctx, channel.ID); err != nil {
-				return fmt.Errorf("fail to stop channel: %w", err)
-			}
-		}
-
 		return nil
 	})
 
 	if err != nil {
 		return fmt.Errorf("fail to run transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (u *watchUsecase) stopIfExistActiveChannel(
+	ctx context.Context, tx repository.DatabaseTransaction, calendarID valueobject.CalendarID) error {
+
+	// 複数チャネル取得できる形としているが、
+	// アプリケーションの仕様上、取得されるのは最大 1 レコードのみとなる
+	channels, err := tx.ListActiveChannelHistoriesWithLock(ctx, calendarID)
+	if err != nil {
+		return fmt.Errorf("fail to check active channel: %w", err)
+	}
+
+	if len(channels) == 0 {
+		return nil
+	}
+
+	// API のみ成功し DB 更新が失敗した場合にステータス不整合が発生するが、
+	// いずれ有効期限が切れるものなので許容する
+	for _, channel := range channels {
+		if err := u.googleCalenderRepo.StopWatch(ctx, channel); err != nil {
+			return fmt.Errorf("fail to stop watch: %w", err)
+		}
+	}
+
+	// SQL としては複数レコード更新される可能性があるが、
+	// アプリケーションの仕様上、更新されるのは最大 1 レコードのみとなる
+	if err := tx.StopActiveChannels(ctx, calendarID); err != nil {
+		return fmt.Errorf("fail to stop active channels: %w", err)
 	}
 
 	return nil

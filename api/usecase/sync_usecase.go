@@ -55,6 +55,8 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 		events, nextSyncToken, err = u.googleCalenderRepo.ListEvents(ctx, calendarID)
 	} else {
 		events, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithSyncToken(ctx, calendarID, syncToken)
+
+		// TODO: syncToken が古い場合は、全件取得して更新するようにしたい
 	}
 	if err != nil {
 		return fmt.Errorf("fail to list events: %w", err)

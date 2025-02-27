@@ -37,6 +37,7 @@ func (tx *mysqlTransaction) CreateCalendar(ctx context.Context, calendar entity.
 	)
 
 	if err != nil {
+		// TODO: 重複エラーの場合は ClientError
 		return fmt.Errorf("fail to insert calendar: %w", err)
 	}
 
