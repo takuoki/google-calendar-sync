@@ -18,7 +18,9 @@ cd google-calendar-sync
 
 2. サービスアカウントの鍵ファイル（JSON 形式）を、下記に配置します。
 
-- api/credentials.json
+```sh
+mv [service-account-credentials.json] ./api/credentials.json
+```
 
 3. アプリケーションを起動します。
 
@@ -35,8 +37,7 @@ curl --location --request POST 'http://localhost:8080/api/calendars/sample@sampl
 4. Google カレンダーを同期します。
 
 ```sh
-curl --location --request POST 'http://localhost:8080/api/sync/sample@sample.com/' \
-  --header 'X-Goog-Resource-State: exists'
+curl --location --request POST 'http://localhost:8080/api/sync/sample@sample.com/'
 ```
 
 - 初回は存在する全データの同期、2 回目以降は差分データのみの同期となります。
