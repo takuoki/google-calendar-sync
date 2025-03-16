@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS events (
     FOREIGN KEY (calendar_id) REFERENCES calendars(id)
 );
 
-CREATE TABLE IF NOT EXISTS channel_hisotries (
+CREATE TABLE IF NOT EXISTS channel_histories (
     calendar_id VARCHAR(255),
     start_time TIMESTAMP NOT NULL,
     resource_id VARCHAR(255) NOT NULL,

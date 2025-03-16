@@ -14,7 +14,7 @@ func (h *handler) PostCalendarsCalendarId(
 	ctx := context.Background()
 
 	if err := h.calendarUsecase.Create(ctx, valueobject.CalendarID(calendarID), params.Name); err != nil {
-		return fmt.Errorf("fail to sync calendar: %w", err)
+		return fmt.Errorf("fail to create calendar: %w", err)
 	}
 
 	return success(c)

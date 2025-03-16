@@ -3,6 +3,7 @@ package googlecalendar
 import (
 	"context"
 	"fmt"
+	"time"
 
 	calendar "google.golang.org/api/calendar/v3"
 
@@ -10,9 +11,9 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
-func (r *googleCalendarRepository) ListEvents(
-	ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, string, error) {
-	call := r.service.Events.List(string(calendarID)).Context(ctx)
+func (r *googleCalendarRepository) ListEventsWithAfter(
+	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
+	call := r.service.Events.List(string(calendarID)).Context(ctx).TimeMin(after.Format(time.RFC3339))
 	return r.listEvents(ctx, call, calendarID)
 }
 

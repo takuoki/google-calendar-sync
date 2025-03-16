@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"os"
 	"time"
 
@@ -16,14 +18,10 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	echohandler "github.com/takuoki/google-calendar-sync/api/handler/echo"
 	"github.com/takuoki/google-calendar-sync/api/openapi"
+	"github.com/takuoki/google-calendar-sync/api/repository/cloudsql"
 	"github.com/takuoki/google-calendar-sync/api/repository/googlecalendar"
 	"github.com/takuoki/google-calendar-sync/api/repository/mysql"
 	"github.com/takuoki/google-calendar-sync/api/usecase"
-)
-
-const (
-	pingRetryLimit    = 30
-	pingRetryInterval = 1 * time.Second
 )
 
 func main() {
@@ -44,13 +42,7 @@ func main() {
 	)
 
 	// Database
-	db, err := mysql.ConnectDB(
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-	)
+	db, err := connectDB()
 	if err != nil {
 		logger.Criticalf(ctx, "fail to connect db: %v", err)
 		exitCode = 1
@@ -63,16 +55,10 @@ func main() {
 		}
 	}()
 
-	for i := 0; ; i++ {
-		if i >= pingRetryLimit {
-			logger.Criticalf(ctx, "fail to ping db: %v", err)
-			exitCode = 2
-			return
-		}
-		if err := db.Ping(); err != nil {
-			break
-		}
-		time.Sleep(pingRetryInterval)
+	if err := waitForDatabaseReady(ctx, db); err != nil {
+		logger.Criticalf(ctx, "fail to wait for db ready: %v", err)
+		exitCode = 2
+		return
 	}
 
 	// Application
@@ -117,4 +103,43 @@ func main() {
 		exitCode = 4
 		return
 	}
+}
+
+func connectDB() (*sql.DB, error) {
+	switch os.Getenv("DB_TYPE") {
+	case "cloudsql":
+		// TODO: 環境変数はここで展開する
+		return cloudsql.ConnectWithConnector()
+	case "mysql":
+		return mysql.ConnectDB(
+			os.Getenv("DB_HOST"),
+			os.Getenv("DB_PORT"),
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_NAME"),
+		)
+	default:
+		return nil, fmt.Errorf("unknown db type: %q", os.Getenv("DB_TYPE"))
+	}
+}
+
+func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
+	const (
+		pingRetryLimit    = 10
+		pingRetryInterval = 5 * time.Second
+	)
+
+	for i := 0; ; i++ {
+		if i >= pingRetryLimit {
+			return fmt.Errorf("fail to connect to the database after reaching the retry limit")
+		}
+		if err := db.PingContext(ctx); err != nil {
+			time.Sleep(pingRetryInterval)
+			continue
+		}
+
+		break
+	}
+
+	return nil
 }

@@ -10,6 +10,7 @@ services:
       PORT: 8080
       LOG_LEVEL: Debug
       GOOGLE_APPLICATION_CREDENTIALS: /credentials.json
+      DB_TYPE: mysql
       DB_HOST: calendar-db
       DB_PORT: 3306
       DB_USER: appuser

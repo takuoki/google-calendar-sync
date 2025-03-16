@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/takuoki/golib/applog"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
@@ -50,9 +51,10 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	var events []entity.Event
 	var nextSyncToken string
 	if syncToken == "" {
-		// TODO: 過去分すべてをSyncするのは大変なので、本日以降のものだけにしたい
 		u.logger.Info(ctx, "sync all events")
-		events, nextSyncToken, err = u.googleCalenderRepo.ListEvents(ctx, calendarID)
+
+		oneWeekAgo := u.clockService.Today().Add(7 * -24 * time.Hour)
+		events, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
 	} else {
 		events, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithSyncToken(ctx, calendarID, syncToken)
 

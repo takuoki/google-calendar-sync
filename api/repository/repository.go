@@ -10,7 +10,7 @@ import (
 
 type GoogleCalendarRepository interface {
 	// events
-	ListEvents(ctx context.Context, calendarID valueobject.CalendarID) (
+	ListEventsWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
 		events []entity.Event, nextSyncToken string, err error)
 
 	ListEventsWithSyncToken(ctx context.Context, calendarID valueobject.CalendarID, syncToken string) (
