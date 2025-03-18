@@ -60,7 +60,7 @@ curl --location --request POST 'http://localhost:8080/api/calendars/sample@sampl
 curl --location --request POST 'http://localhost:8080/api/sync/sample@sample.com/'
 ```
 
-- The first time, all data from the past week will be synchronized, and from the second time onwards, only the differential data will be synchronized.
+- The first time, all data since 1 week ago will be synchronized, and from the second time onwards, only the differential data will be synchronized.
 
 5. Connect to the database and check the results.
 
@@ -98,4 +98,63 @@ curl --location --request POST 'https://your-api-url.run.app/api/calendars/sampl
 
 ```sh
 curl --location --request POST 'https://your-api-url.run.app/api/watch/sample@sample.com/'
+```
+
+## Specifications
+
+### Sequence Diagram
+
+#### Register the Google Calendar
+
+```mermaid
+sequenceDiagram
+    Client->>API: POST /api/calendars/sample@sample.com/?name=sample
+    activate API
+    API->>DB: create calendar
+    API->>Client: success
+    deactivate API
+```
+
+#### Start Watch for Google Calendar
+
+```mermaid
+sequenceDiagram
+    Client->>API: POST /api/watch/sample@sample.com
+    activate API
+    API->>DB: get calendar
+    API->>DB: stop if exist active channel
+    API->>Google Calendar API: watch
+    API->>DB: create channel history
+    API->>Client: success
+    deactivate API
+```
+
+#### Webhook (When Watch starts)
+
+```mermaid
+sequenceDiagram
+    Webhook->>API: POST /api/sync/sample@sample.com
+    activate API
+    API->>DB: get calendar
+    API->>DB: get latest sync token (not exist)
+    API->>Google Calendar API: list events (since 1 week ago)
+    API->>DB: sync events (insert events)
+    API->>DB: create sync history
+    API->>Webhook: success
+    deactivate API
+```
+
+#### Webhook (When calendar is updated)
+
+```mermaid
+sequenceDiagram
+    Webhook->>API: POST /api/sync/sample@sample.com
+    activate API
+    API->>DB: get calendar
+    API->>DB: get latest sync token (exist)
+    API->>Google Calendar API: list events (with sync token)
+    API->>DB: sync events (insert or update events)
+    API->>DB: create sync history
+    API->>Webhook: success
+    deactivate API
 ```
