@@ -2,6 +2,14 @@
 
 google-calendar-sync is a sample application for synchronizing Google Calendar events with a database.
 
+## Table of Contents
+
+- [Requirements](#requirements)
+- [Get Started](#get-started)
+  - [Running in a local environment](#running-in-a-local-environment)
+  - [Running on Google Cloud](#running-on-google-cloud)
+- [Specifications](#specifications)
+
 ## Requirements
 
 - A Google Cloud service account
@@ -94,7 +102,7 @@ make deploy
 curl --location --request POST 'https://your-api-url.run.app/api/calendars/sample@sample.com/?name=sample'
 ```
 
-5. Start Watch for Google Calendar.
+5. Start watching Google Calendar.
 
 ```sh
 curl --location --request POST 'https://your-api-url.run.app/api/watch/sample@sample.com/'
@@ -115,7 +123,7 @@ sequenceDiagram
     deactivate API
 ```
 
-#### Start Watch for Google Calendar
+#### Start watching Google Calendar
 
 ```mermaid
 sequenceDiagram
@@ -129,7 +137,7 @@ sequenceDiagram
     deactivate API
 ```
 
-#### Webhook (When Watch starts)
+#### Webhook (When watch starts)
 
 ```mermaid
 sequenceDiagram
@@ -153,7 +161,7 @@ sequenceDiagram
     API->>DB: get calendar
     API->>DB: get latest sync token (exist)
     API->>Google Calendar API: list events (with sync token)
-    API->>DB: sync events (insert or update events)
+    API->>DB: sync events (insert and update events)
     API->>DB: create sync history
     API->>Webhook: success
     deactivate API
