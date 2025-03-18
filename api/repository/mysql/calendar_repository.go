@@ -29,6 +29,28 @@ func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobjec
 	return &calendar, nil
 }
 
+func (r *mysqlRepository) ListCalendars(ctx context.Context) ([]entity.Calendar, error) {
+	rows, err := r.db.QueryContext(
+		ctx,
+		"SELECT id, name FROM calendars",
+	)
+	if err != nil {
+		return nil, fmt.Errorf("fail to select calendars: %w", err)
+	}
+	defer rows.Close()
+
+	var calendars []entity.Calendar
+	for rows.Next() {
+		var calendar entity.Calendar
+		if err := rows.Scan(&calendar.ID, &calendar.Name); err != nil {
+			return nil, fmt.Errorf("fail to scan calendar: %w", err)
+		}
+		calendars = append(calendars, calendar)
+	}
+
+	return calendars, nil
+}
+
 func (tx *mysqlTransaction) CreateCalendar(ctx context.Context, calendar entity.Calendar) error {
 	_, err := tx.tx.ExecContext(
 		ctx,

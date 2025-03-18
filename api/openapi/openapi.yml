@@ -1,4 +1,4 @@
-openapi: 3.1.0
+openapi: 3.0.4
 info:
   title: Google Calendar Sync API
   version: 0.1.0
@@ -78,6 +78,42 @@ paths:
                   message:
                     type: string
                     example: calendarId not found
+  /watch/:
+    post:
+      summary: Start watching all calendars
+      tags:
+        - Watch
+      parameters:
+        - name: all
+          in: query
+          required: false
+          schema:
+            type: boolean
+            example: true
+      responses:
+        '200':
+          description: Watch started for all calendars successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+        '404':
+          description: No calendars registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: No calendars registered
   /watch/{calendarId}/:
     post:
       summary: Start watching a calendar

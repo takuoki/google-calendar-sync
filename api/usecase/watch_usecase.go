@@ -10,6 +10,7 @@ import (
 )
 
 type WatchUsecase interface {
+	StartAll(ctx context.Context) error
 	Start(ctx context.Context, calendarID valueobject.CalendarID) error
 	Stop(ctx context.Context, calendarID valueobject.CalendarID) error
 }
@@ -30,6 +31,22 @@ func NewWatchUsecase(
 		databaseRepo:       databaseRepo,
 		logger:             logger,
 	}
+}
+
+func (u *watchUsecase) StartAll(ctx context.Context) error {
+
+	calendars, err := u.databaseRepo.ListCalendars(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to list calendars: %w", err)
+	}
+
+	for _, calendar := range calendars {
+		if err := u.Start(ctx, calendar.ID); err != nil {
+			return fmt.Errorf("fail to start: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (u *watchUsecase) Start(ctx context.Context, calendarID valueobject.CalendarID) error {
