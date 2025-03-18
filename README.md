@@ -14,7 +14,7 @@ google-calendar-sync is a sample application for synchronizing Google Calendar e
 ### For running on Google Cloud
 
 - gcloud
-  - Logged in with an account that can operate Artifact Registry and Cloud Run ...
+  - Logged in with an account that has permissions to operate Artifact Registry, Cloud Run, and other necessary services
 - Cloud SQL
   - Tables defined in `db/init.sql` are created
 
@@ -76,13 +76,13 @@ mysql -h 127.0.0.1 -P 3306 -u appuser -ppassword app
 cp .env_sample .env
 ```
 
-2. Build and push image to Artifact Registry.
+2. Build and push the image to Artifact Registry.
 
 ```sh
 make build
 ```
 
-3. Deploy API to Cloud Run.
+3. Deploy the API to Cloud Run.
 
 ```sh
 make deploy
