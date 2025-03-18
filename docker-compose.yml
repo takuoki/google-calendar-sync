@@ -4,6 +4,7 @@ services:
   api:
     build:
       context: ./api
+      dockerfile: Dockerfile_local
     container_name: calendar-api
     restart: unless-stopped
     environment:
