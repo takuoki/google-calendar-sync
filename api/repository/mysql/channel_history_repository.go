@@ -19,7 +19,6 @@ func (tx *mysqlTransaction) ListActiveChannelHistoriesWithLock(
 			"ORDER BY start_time FOR UPDATE",
 		calendarID, tx.clockService.Now())
 	if err != nil {
-		// TODO: レコードを取得できない場合にエラーになるのか要確認
 		return nil, fmt.Errorf("fail to select channel history: %w", err)
 	}
 	defer rows.Close()

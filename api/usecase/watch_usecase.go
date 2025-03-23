@@ -52,7 +52,6 @@ func (u *watchUsecase) StartAll(ctx context.Context) error {
 func (u *watchUsecase) Start(ctx context.Context, calendarID valueobject.CalendarID) error {
 
 	if _, err := u.databaseRepo.GetCalendar(ctx, calendarID); err != nil {
-		// TODO: ClientError
 		return fmt.Errorf("fail to get calendar: %w", err)
 	}
 
@@ -87,7 +86,6 @@ func (u *watchUsecase) Start(ctx context.Context, calendarID valueobject.Calenda
 func (u *watchUsecase) Stop(ctx context.Context, calendarID valueobject.CalendarID) error {
 
 	if _, err := u.databaseRepo.GetCalendar(ctx, calendarID); err != nil {
-		// TODO: ClientError
 		return fmt.Errorf("fail to get calendar: %w", err)
 	}
 
