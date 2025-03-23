@@ -19,13 +19,18 @@ type googleCalendarRepository struct {
 }
 
 func NewGoogleCalendarRepository(webhookBaseURL string, service *calendar.Service,
-	clockService service.Clock, logger applog.Logger) repository.GoogleCalendarRepository {
+	clockService service.Clock, logger applog.Logger) (repository.GoogleCalendarRepository, error) {
+
+	if webhookBaseURL == "" {
+		return nil, fmt.Errorf("webhook base url is required")
+	}
+
 	return &googleCalendarRepository{
 		webhookBaseURL: webhookBaseURL,
 		service:        service,
 		clockService:   clockService,
 		logger:         logger,
-	}
+	}, nil
 }
 
 func convertDateTime(datetime *calendar.EventDateTime) (*time.Time, error) {

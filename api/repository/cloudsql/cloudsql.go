@@ -4,33 +4,21 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"net"
-	"os"
 
 	"cloud.google.com/go/cloudsqlconn"
 	mysql "github.com/go-sql-driver/mysql"
 )
 
-func ConnectWithConnector() (*sql.DB, error) {
-	mustGetenv := func(k string) string {
-		v := os.Getenv(k)
-		if v == "" {
-			log.Fatalf("Fatal Error in connect_connector.go: %s environment variable not set.", k)
-		}
-		return v
+func ConnectWithConnector(instanceConnectionName, port, user, password, dbname, usePrivate string) (*sql.DB, error) {
+
+	if err := validateArgs(instanceConnectionName, port, user, password, dbname, usePrivate); err != nil {
+		return nil, err
 	}
-	// Note: Saving credentials in environment variables is convenient, but not
-	// secure - consider a more secure solution such as
-	// Cloud Secret Manager (https://cloud.google.com/secret-manager) to help
-	// keep passwords and other secrets safe.
-	var (
-		dbUser                 = mustGetenv("DB_USER")                  // e.g. 'my-db-user'
-		dbPwd                  = mustGetenv("DB_PASSWORD")              // e.g. 'my-db-password'
-		dbName                 = mustGetenv("DB_NAME")                  // e.g. 'my-database'
-		instanceConnectionName = mustGetenv("INSTANCE_CONNECTION_NAME") // e.g. 'project:region:instance'
-		usePrivate             = os.Getenv("PRIVATE_IP")
-	)
+
+	if port == "" {
+		port = "3306"
+	}
 
 	d, err := cloudsqlconn.NewDialer(context.Background())
 	if err != nil {
@@ -45,8 +33,8 @@ func ConnectWithConnector() (*sql.DB, error) {
 			return d.Dial(ctx, instanceConnectionName, opts...)
 		})
 
-	dbURI := fmt.Sprintf("%s:%s@cloudsqlconn(localhost:3306)/%s?parseTime=true",
-		dbUser, dbPwd, dbName)
+	dbURI := fmt.Sprintf("%s:%s@cloudsqlconn(localhost:%s)/%s?parseTime=true",
+		user, password, port, dbname)
 
 	dbPool, err := sql.Open("mysql", dbURI)
 	if err != nil {
@@ -54,4 +42,20 @@ func ConnectWithConnector() (*sql.DB, error) {
 	}
 
 	return dbPool, nil
+}
+
+func validateArgs(instanceConnectionName, port, user, password, dbname, usePrivate string) error {
+	if instanceConnectionName == "" {
+		return fmt.Errorf("instance connection name is required")
+	}
+	if user == "" {
+		return fmt.Errorf("database user is required")
+	}
+	if password == "" {
+		return fmt.Errorf("database password is required")
+	}
+	if dbname == "" {
+		return fmt.Errorf("database name is required")
+	}
+	return nil
 }

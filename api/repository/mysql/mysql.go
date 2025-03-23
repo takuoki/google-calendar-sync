@@ -14,6 +14,14 @@ import (
 
 func ConnectDB(host, port, user, password, dbname string) (*sql.DB, error) {
 
+	if err := validateArgs(host, port, user, password, dbname); err != nil {
+		return nil, err
+	}
+
+	if port == "" {
+		port = "3306"
+	}
+
 	connStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		user, password, host, port, dbname)
 	db, err := sql.Open("mysql", connStr)
@@ -22,6 +30,22 @@ func ConnectDB(host, port, user, password, dbname string) (*sql.DB, error) {
 	}
 
 	return db, nil
+}
+
+func validateArgs(host, port, user, password, dbname string) error {
+	if host == "" {
+		return fmt.Errorf("database host is required")
+	}
+	if user == "" {
+		return fmt.Errorf("database user is required")
+	}
+	if password == "" {
+		return fmt.Errorf("database password is required")
+	}
+	if dbname == "" {
+		return fmt.Errorf("database name is required")
+	}
+	return nil
 }
 
 type mysqlRepository struct {

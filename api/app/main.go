@@ -25,13 +25,6 @@ import (
 )
 
 func main() {
-	exitCode := 0
-	defer func() {
-		if exitCode != 0 {
-			os.Exit(exitCode)
-		}
-	}()
-
 	ctx := context.Background()
 
 	logger := applog.NewBasicLogger(
@@ -41,12 +34,17 @@ func main() {
 		),
 	)
 
-	// Database
+	if code, err := run(ctx, logger); err != nil {
+		logger.Criticalf(ctx, "fail to run: %v", err)
+		os.Exit(code)
+	}
+}
+
+func run(ctx context.Context, logger applog.Logger) (exitCode int, er error) {
+
 	db, err := connectDB()
 	if err != nil {
-		logger.Criticalf(ctx, "fail to connect db: %v", err)
-		exitCode = 1
-		return
+		return 1, fmt.Errorf("fail to connect db: %w", err)
 	}
 
 	defer func() {
@@ -56,29 +54,13 @@ func main() {
 	}()
 
 	if err := waitForDatabaseReady(ctx, db); err != nil {
-		logger.Criticalf(ctx, "fail to wait for db ready: %v", err)
-		exitCode = 2
-		return
+		return 2, fmt.Errorf("fail to wait for db ready: %w", err)
 	}
 
-	// Application
-	calendarService, err := calendar.NewService(ctx)
+	handler, err := setupApplication(ctx, db, logger)
 	if err != nil {
-		logger.Criticalf(ctx, "fail to create calendar service: %v", err)
-		exitCode = 3
-		return
+		return 3, fmt.Errorf("fail to setup application: %w", err)
 	}
-	clockService := service.NewClock()
-
-	googleCalendarRepo := googlecalendar.NewGoogleCalendarRepository(
-		os.Getenv("WEBHOOK_BASE_URL"), calendarService, clockService, logger)
-	mysqlRepo := mysql.NewMysqlRepository(db, clockService, logger)
-
-	calendarUsecase := usecase.NewCalendarUsecase(mysqlRepo, logger)
-	syncUsecase := usecase.NewSyncUsecase(clockService, googleCalendarRepo, mysqlRepo, logger)
-	watchUsecase := usecase.NewWatchUsecase(googleCalendarRepo, mysqlRepo, logger)
-
-	handler := echohandler.New(calendarUsecase, syncUsecase, watchUsecase, logger)
 
 	e := echo.New()
 	e.HideBanner = true
@@ -99,17 +81,23 @@ func main() {
 	logger.Infof(ctx, "listening and serving on port %s", port)
 
 	if err := e.Start(":" + port); err != nil {
-		logger.Criticalf(ctx, "failed to serve: %v", err)
-		exitCode = 4
-		return
+		return 4, fmt.Errorf("fail to serve: %w", err)
 	}
+
+	return 0, nil
 }
 
 func connectDB() (*sql.DB, error) {
 	switch os.Getenv("DB_TYPE") {
 	case "cloudsql":
-		// TODO: 環境変数はここで展開する
-		return cloudsql.ConnectWithConnector()
+		return cloudsql.ConnectWithConnector(
+			os.Getenv("INSTANCE_CONNECTION_NAME"),
+			os.Getenv("DB_PORT"),
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_NAME"),
+			os.Getenv("DB_USE_PRIVATE_IP"),
+		)
 	case "mysql":
 		return mysql.ConnectDB(
 			os.Getenv("DB_HOST"),
@@ -142,4 +130,32 @@ func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (openapi.ServerInterface, error) {
+	// Service
+	calendarService, err := calendar.NewService(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fail to create calendar service: %w", err)
+	}
+	clockService := service.NewClock()
+
+	// Repository
+	googleCalendarRepo, err := googlecalendar.NewGoogleCalendarRepository(
+		os.Getenv("WEBHOOK_BASE_URL"), calendarService, clockService, logger)
+	if err != nil {
+		return nil, fmt.Errorf("fail to create google calendar repository: %w", err)
+	}
+
+	mysqlRepo := mysql.NewMysqlRepository(db, clockService, logger)
+
+	// Usecase
+	calendarUsecase := usecase.NewCalendarUsecase(mysqlRepo, logger)
+	syncUsecase := usecase.NewSyncUsecase(clockService, googleCalendarRepo, mysqlRepo, logger)
+	watchUsecase := usecase.NewWatchUsecase(googleCalendarRepo, mysqlRepo, logger)
+
+	// Handler
+	handler := echohandler.New(calendarUsecase, syncUsecase, watchUsecase, logger)
+
+	return handler, nil
 }
