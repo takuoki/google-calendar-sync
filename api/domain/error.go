@@ -19,6 +19,7 @@ func (e *ClientError) Error() string {
 }
 
 var (
-	CalendarNotFoundError  = NewClientError(http.StatusNotFound, "calender not found")
-	AllParameterFalseError = NewClientError(http.StatusBadRequest, "all must be true")
+	CalendarNotFoundError     = NewClientError(http.StatusNotFound, "calender not found")
+	CalendarAlreadyExistError = NewClientError(http.StatusNotFound, "calender already exists")
+	AllParameterFalseError    = NewClientError(http.StatusBadRequest, "all must be true")
 )
