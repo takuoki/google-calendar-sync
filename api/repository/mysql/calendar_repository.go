@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/go-sql-driver/mysql"
+
 	"github.com/takuoki/google-calendar-sync/api/domain"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
@@ -59,7 +61,10 @@ func (tx *mysqlTransaction) CreateCalendar(ctx context.Context, calendar entity.
 	)
 
 	if err != nil {
-		// TODO: 重複エラーの場合は ClientError
+		const duplicateEntryCode = 1062
+		if mysqlErr, ok := err.(*mysql.MySQLError); ok && mysqlErr.Number == duplicateEntryCode {
+			return domain.CalendarAlreadyExistError
+		}
 		return fmt.Errorf("fail to insert calendar: %w", err)
 	}
 
