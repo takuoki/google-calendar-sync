@@ -9,7 +9,6 @@ import (
 
 	echo "github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	calendar "google.golang.org/api/calendar/v3"
 
 	applog "github.com/takuoki/golib/applog"
 	echo_recovery "github.com/takuoki/golib/middleware/http/echo/recovery"
@@ -18,6 +17,7 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	echohandler "github.com/takuoki/google-calendar-sync/api/handler/echo"
 	"github.com/takuoki/google-calendar-sync/api/openapi"
+	"github.com/takuoki/google-calendar-sync/api/repository"
 	"github.com/takuoki/google-calendar-sync/api/repository/cloudsql"
 	"github.com/takuoki/google-calendar-sync/api/repository/googlecalendar"
 	"github.com/takuoki/google-calendar-sync/api/repository/mysql"
@@ -133,21 +133,29 @@ func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
 }
 
 func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (openapi.ServerInterface, error) {
+
 	// Service
-	calendarService, err := calendar.NewService(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create calendar service: %w", err)
-	}
 	clockService := service.NewClock()
 
 	// Repository
-	googleCalendarRepo, err := googlecalendar.NewGoogleCalendarRepository(
-		os.Getenv("WEBHOOK_BASE_URL"), calendarService, clockService, logger)
-	if err != nil {
-		return nil, fmt.Errorf("fail to create google calendar repository: %w", err)
-	}
-
 	mysqlRepo := mysql.NewMysqlRepository(db, clockService, logger)
+
+	var googleCalendarRepo repository.GoogleCalendarRepository
+	var err error
+	if oauthClientID := os.Getenv("OAUTH_CLIENT_ID"); oauthClientID == "" {
+		googleCalendarRepo, err = googlecalendar.NewGoogleCalendarRepository(
+			ctx, os.Getenv("WEBHOOK_BASE_URL"), clockService, logger)
+		if err != nil {
+			return nil, fmt.Errorf("fail to create google calendar repository: %w", err)
+		}
+	} else {
+		googleCalendarRepo, err = googlecalendar.NewGoogleCalendarWithOauthRepository(
+			os.Getenv("WEBHOOK_BASE_URL"), oauthClientID, os.Getenv("OAUTH_CLIENT_SECRET"),
+			os.Getenv("OAUTH_REDIRECT_URL"), mysqlRepo, clockService, logger)
+		if err != nil {
+			return nil, fmt.Errorf("fail to create google calendar with oauth repository: %w", err)
+		}
+	}
 
 	// Usecase
 	calendarUsecase := usecase.NewCalendarUsecase(mysqlRepo, logger)

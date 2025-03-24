@@ -7,24 +7,50 @@ import (
 
 	calendar "google.golang.org/api/calendar/v3"
 
+	"github.com/takuoki/golib/applog"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
+	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
 func (r *googleCalendarRepository) ListEventsWithAfter(
 	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
 	call := r.service.Events.List(string(calendarID)).Context(ctx).TimeMin(after.Format(time.RFC3339))
-	return r.listEvents(ctx, call, calendarID)
+	return listEvents(ctx, call, calendarID, r.logger)
+}
+
+func (r *googleCalendarWithOauthRepository) ListEventsWithAfter(
+	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
+
+	service, err := r.getCalendarService(ctx, calendarID)
+	if err != nil {
+		return nil, "", fmt.Errorf("fail to get calendar service: %w", err)
+	}
+
+	call := service.Events.List(string(calendarID)).Context(ctx).TimeMin(after.Format(time.RFC3339))
+	return listEvents(ctx, call, calendarID, r.logger)
 }
 
 func (r *googleCalendarRepository) ListEventsWithSyncToken(
 	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
 	call := r.service.Events.List(string(calendarID)).Context(ctx).SyncToken(syncToken)
-	return r.listEvents(ctx, call, calendarID)
+	return listEvents(ctx, call, calendarID, r.logger)
 }
 
-func (r *googleCalendarRepository) listEvents(
-	ctx context.Context, baseCall *calendar.EventsListCall, calendarID valueobject.CalendarID) ([]entity.Event, string, error) {
+func (r *googleCalendarWithOauthRepository) ListEventsWithSyncToken(
+	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
+
+	service, err := r.getCalendarService(ctx, calendarID)
+	if err != nil {
+		return nil, "", fmt.Errorf("fail to get calendar service: %w", err)
+	}
+
+	call := service.Events.List(string(calendarID)).Context(ctx).SyncToken(syncToken)
+	return listEvents(ctx, call, calendarID, r.logger)
+}
+
+func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
+	calendarID valueobject.CalendarID, logger applog.Logger) ([]entity.Event, string, error) {
 
 	pageToken := ""
 	syncToken := ""
@@ -47,7 +73,7 @@ func (r *googleCalendarRepository) listEvents(
 
 		for _, item := range events.Items {
 
-			r.logger.Debugf(ctx, "list events: item=%+v", item)
+			logger.Debugf(ctx, "list events: item=%+v", item)
 
 			start, err := convertDateTime(item.Start)
 			if err != nil {
@@ -71,22 +97,37 @@ func (r *googleCalendarRepository) listEvents(
 		pageToken = events.NextPageToken
 		syncToken = events.NextSyncToken
 
-		r.logger.Debugf(ctx, "list events: pageToken=%q, syncToken=%q", pageToken, syncToken)
+		logger.Debugf(ctx, "list events: pageToken=%q, syncToken=%q", pageToken, syncToken)
 	}
 
 	return res, syncToken, nil
 }
 
 func (r *googleCalendarRepository) Watch(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error) {
+	return watch(ctx, r.service, r.webhookBaseURL, r.clockService, calendarID)
+}
+
+func (r *googleCalendarWithOauthRepository) Watch(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error) {
+
+	service, err := r.getCalendarService(ctx, calendarID)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get calendar service: %w", err)
+	}
+
+	return watch(ctx, service, r.webhookBaseURL, r.clockService, calendarID)
+}
+
+func watch(ctx context.Context, service *calendar.Service, webhookBaseURL string, clockService service.Clock,
+	calendarID valueobject.CalendarID) (*entity.Channel, error) {
 
 	// TODO: ttl の設定を追加したい
 	request := calendar.Channel{
 		Id:      calendarID.ToChannelID(),
 		Type:    "web_hook",
-		Address: fmt.Sprintf("%s/%s/", r.webhookBaseURL, calendarID),
+		Address: fmt.Sprintf("%s/%s/", webhookBaseURL, calendarID),
 	}
 
-	channel, err := r.service.Events.Watch(string(calendarID), &request).Context(ctx).Do()
+	channel, err := service.Events.Watch(string(calendarID), &request).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("fail to watch: %w", err)
 	}
@@ -99,7 +140,7 @@ func (r *googleCalendarRepository) Watch(ctx context.Context, calendarID valueob
 	return &entity.Channel{
 		CalendarID: calendarID,
 		ResourceID: valueobject.ResourceID(channel.ResourceId),
-		StartTime:  r.clockService.Now(),
+		StartTime:  clockService.Now(),
 		Expiration: expiration,
 	}, nil
 }

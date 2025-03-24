@@ -6,6 +6,7 @@ paths:
   /calendars/{calendarId}/:
     post:
       summary: Create a new calendar
+      # TODO (oauth): オプショナルでrefresh_tokenを受け取る
       tags:
         - Calendar
       parameters:

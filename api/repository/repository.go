@@ -28,6 +28,7 @@ type DatabaseRepository interface {
 	// calendars
 	GetCalendar(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Calendar, error)
 	ListCalendars(ctx context.Context) ([]entity.Calendar, error)
+	GetRefreshToken(ctx context.Context, calendarID valueobject.CalendarID) (string, error)
 
 	// sync_histories
 	GetLatestSyncToken(ctx context.Context, calendarID valueobject.CalendarID) (syncToken string, err error)

@@ -12,6 +12,8 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
+// TODO (oauth): RefreshToken のキャッシュを持つ
+
 func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Calendar, error) {
 	var calendar entity.Calendar
 
@@ -27,6 +29,8 @@ func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobjec
 		}
 		return nil, fmt.Errorf("fail to select calendar: %w", err)
 	}
+
+	// TODO (oauth): RefreshToken のキャッシュを更新
 
 	return &calendar, nil
 }
@@ -51,6 +55,11 @@ func (r *mysqlRepository) ListCalendars(ctx context.Context) ([]entity.Calendar,
 	}
 
 	return calendars, nil
+}
+
+func (r *mysqlRepository) GetRefreshToken(ctx context.Context, calendarID valueobject.CalendarID) (string, error) {
+	// TODO (oauth)
+	return "", nil
 }
 
 func (tx *mysqlTransaction) CreateCalendar(ctx context.Context, calendar entity.Calendar) error {
