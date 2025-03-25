@@ -141,6 +141,7 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 	mysqlRepo := mysql.NewMysqlRepository(db, clockService, logger)
 
 	var googleCalendarRepo repository.GoogleCalendarRepository
+	var useOauth bool
 	var err error
 	if oauthClientID := os.Getenv("OAUTH_CLIENT_ID"); oauthClientID == "" {
 		googleCalendarRepo, err = googlecalendar.NewGoogleCalendarRepository(
@@ -155,10 +156,12 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 		if err != nil {
 			return nil, fmt.Errorf("fail to create google calendar with oauth repository: %w", err)
 		}
+
+		useOauth = true
 	}
 
 	// Usecase
-	calendarUsecase := usecase.NewCalendarUsecase(mysqlRepo, logger)
+	calendarUsecase := usecase.NewCalendarUsecase(mysqlRepo, useOauth, logger)
 	syncUsecase := usecase.NewSyncUsecase(clockService, googleCalendarRepo, mysqlRepo, logger)
 	watchUsecase := usecase.NewWatchUsecase(googleCalendarRepo, mysqlRepo, logger)
 

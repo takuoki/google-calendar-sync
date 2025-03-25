@@ -59,7 +59,11 @@ make run
 3. Register the Google Calendar.
 
 ```sh
-curl --location --request POST 'http://localhost:8080/api/calendars/sample@sample.com/?name=sample'
+curl --location --request POST 'http://localhost:8080/api/calendars/sample@sample.com/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "name": "sample"
+}'
 ```
 
 4. Synchronize the Google Calendar.
@@ -99,7 +103,11 @@ make deploy
 4. Register the Google Calendar.
 
 ```sh
-curl --location --request POST 'https://your-api-url.run.app/api/calendars/sample@sample.com/?name=sample'
+curl --location --request POST 'https://your-api-url.run.app/api/calendars/sample@sample.com/' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "name": "sample"
+}'
 ```
 
 5. Start watching Google Calendar.

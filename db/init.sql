@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS calendars (
     id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    -- TODO (oauth): refresh_token を暗号化して保存する
+    refresh_token VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );

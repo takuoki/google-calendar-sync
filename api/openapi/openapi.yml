@@ -6,7 +6,6 @@ paths:
   /calendars/{calendarId}/:
     post:
       summary: Create a new calendar
-      # TODO (oauth): オプショナルでrefresh_tokenを受け取る
       tags:
         - Calendar
       parameters:
@@ -15,11 +14,19 @@ paths:
           required: true
           schema:
             type: string
-        - name: name
-          in: query
-          required: true
-          schema:
-            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                refreshToken:
+                  type: string
+                  nullable: true
+                  description: Required when using OAuth 2.0 authentication to connect to the Google Calendar API.
       responses:
         '201':
           description: Calendar created successfully

@@ -21,15 +21,21 @@ import (
 	"github.com/oapi-codegen/runtime"
 )
 
-// PostCalendarsCalendarIdParams defines parameters for PostCalendarsCalendarId.
-type PostCalendarsCalendarIdParams struct {
-	Name string `form:"name" json:"name"`
+// PostCalendarsCalendarIdJSONBody defines parameters for PostCalendarsCalendarId.
+type PostCalendarsCalendarIdJSONBody struct {
+	Name *string `json:"name,omitempty"`
+
+	// RefreshToken Required when using OAuth 2.0 authentication to connect to the Google Calendar API.
+	RefreshToken *string `json:"refreshToken"`
 }
 
 // PostWatchParams defines parameters for PostWatch.
 type PostWatchParams struct {
 	All *bool `form:"all,omitempty" json:"all,omitempty"`
 }
+
+// PostCalendarsCalendarIdJSONRequestBody defines body for PostCalendarsCalendarId for application/json ContentType.
+type PostCalendarsCalendarIdJSONRequestBody PostCalendarsCalendarIdJSONBody
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -104,8 +110,10 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// PostCalendarsCalendarId request
-	PostCalendarsCalendarId(ctx context.Context, calendarId string, params *PostCalendarsCalendarIdParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// PostCalendarsCalendarIdWithBody request with any body
+	PostCalendarsCalendarIdWithBody(ctx context.Context, calendarId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostCalendarsCalendarId(ctx context.Context, calendarId string, body PostCalendarsCalendarIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostSyncCalendarId request
 	PostSyncCalendarId(ctx context.Context, calendarId string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -120,8 +128,20 @@ type ClientInterface interface {
 	PostWatchCalendarId(ctx context.Context, calendarId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) PostCalendarsCalendarId(ctx context.Context, calendarId string, params *PostCalendarsCalendarIdParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewPostCalendarsCalendarIdRequest(c.Server, calendarId, params)
+func (c *Client) PostCalendarsCalendarIdWithBody(ctx context.Context, calendarId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostCalendarsCalendarIdRequestWithBody(c.Server, calendarId, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostCalendarsCalendarId(ctx context.Context, calendarId string, body PostCalendarsCalendarIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostCalendarsCalendarIdRequest(c.Server, calendarId, body)
 	if err != nil {
 		return nil, err
 	}
@@ -180,8 +200,19 @@ func (c *Client) PostWatchCalendarId(ctx context.Context, calendarId string, req
 	return c.Client.Do(req)
 }
 
-// NewPostCalendarsCalendarIdRequest generates requests for PostCalendarsCalendarId
-func NewPostCalendarsCalendarIdRequest(server string, calendarId string, params *PostCalendarsCalendarIdParams) (*http.Request, error) {
+// NewPostCalendarsCalendarIdRequest calls the generic PostCalendarsCalendarId builder with application/json body
+func NewPostCalendarsCalendarIdRequest(server string, calendarId string, body PostCalendarsCalendarIdJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostCalendarsCalendarIdRequestWithBody(server, calendarId, "application/json", bodyReader)
+}
+
+// NewPostCalendarsCalendarIdRequestWithBody generates requests for PostCalendarsCalendarId with any type of body
+func NewPostCalendarsCalendarIdRequestWithBody(server string, calendarId string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
@@ -206,28 +237,12 @@ func NewPostCalendarsCalendarIdRequest(server string, calendarId string, params 
 		return nil, err
 	}
 
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "name", runtime.ParamLocationQuery, params.Name); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -426,8 +441,10 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// PostCalendarsCalendarIdWithResponse request
-	PostCalendarsCalendarIdWithResponse(ctx context.Context, calendarId string, params *PostCalendarsCalendarIdParams, reqEditors ...RequestEditorFn) (*PostCalendarsCalendarIdResponse, error)
+	// PostCalendarsCalendarIdWithBodyWithResponse request with any body
+	PostCalendarsCalendarIdWithBodyWithResponse(ctx context.Context, calendarId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostCalendarsCalendarIdResponse, error)
+
+	PostCalendarsCalendarIdWithResponse(ctx context.Context, calendarId string, body PostCalendarsCalendarIdJSONRequestBody, reqEditors ...RequestEditorFn) (*PostCalendarsCalendarIdResponse, error)
 
 	// PostSyncCalendarIdWithResponse request
 	PostSyncCalendarIdWithResponse(ctx context.Context, calendarId string, reqEditors ...RequestEditorFn) (*PostSyncCalendarIdResponse, error)
@@ -582,9 +599,17 @@ func (r PostWatchCalendarIdResponse) StatusCode() int {
 	return 0
 }
 
-// PostCalendarsCalendarIdWithResponse request returning *PostCalendarsCalendarIdResponse
-func (c *ClientWithResponses) PostCalendarsCalendarIdWithResponse(ctx context.Context, calendarId string, params *PostCalendarsCalendarIdParams, reqEditors ...RequestEditorFn) (*PostCalendarsCalendarIdResponse, error) {
-	rsp, err := c.PostCalendarsCalendarId(ctx, calendarId, params, reqEditors...)
+// PostCalendarsCalendarIdWithBodyWithResponse request with arbitrary body returning *PostCalendarsCalendarIdResponse
+func (c *ClientWithResponses) PostCalendarsCalendarIdWithBodyWithResponse(ctx context.Context, calendarId string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostCalendarsCalendarIdResponse, error) {
+	rsp, err := c.PostCalendarsCalendarIdWithBody(ctx, calendarId, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostCalendarsCalendarIdResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostCalendarsCalendarIdWithResponse(ctx context.Context, calendarId string, body PostCalendarsCalendarIdJSONRequestBody, reqEditors ...RequestEditorFn) (*PostCalendarsCalendarIdResponse, error) {
+	rsp, err := c.PostCalendarsCalendarId(ctx, calendarId, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -821,7 +846,7 @@ func ParsePostWatchCalendarIdResponse(rsp *http.Response) (*PostWatchCalendarIdR
 type ServerInterface interface {
 	// Create a new calendar
 	// (POST /calendars/{calendarId}/)
-	PostCalendarsCalendarId(ctx echo.Context, calendarId string, params PostCalendarsCalendarIdParams) error
+	PostCalendarsCalendarId(ctx echo.Context, calendarId string) error
 	// Sync calendar information with local DB
 	// (POST /sync/{calendarId}/)
 	PostSyncCalendarId(ctx echo.Context, calendarId string) error
@@ -852,17 +877,8 @@ func (w *ServerInterfaceWrapper) PostCalendarsCalendarId(ctx echo.Context) error
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter calendarId: %s", err))
 	}
 
-	// Parameter object where we will unmarshal all parameters from the context
-	var params PostCalendarsCalendarIdParams
-	// ------------- Required query parameter "name" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "name", ctx.QueryParams(), &params.Name)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
-	}
-
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostCalendarsCalendarId(ctx, calendarId, params)
+	err = w.Handler.PostCalendarsCalendarId(ctx, calendarId)
 	return err
 }
 
@@ -971,16 +987,17 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+yVQU/jPBCG/4o156gt38cpt12QVr2skPawhxUH40xTI8c2nslCVOW/r8ZtQkrLIgSL",
-	"kODkyh3PzDt+/GYD1q8ClBtgyw6hhG8h1A7VmXboK53Uj84b9eViCQX8xkQ2eChhMTuZLaAvIET0Oloo",
-	"4f/ZYnYKBUTNa5KEc7NLQfPN8HNZ9XP5LwZiWUPEpNkGv6yghItAPNSls/FITpp0g4yJoPwlPUOZC0EB",
-	"XjfStpmGJ7xpbcIKSk4tFkBmjY3OKrso0cTJ+hr6vtglu2kxdffZ8vKcPJcSTDF4wiz+v8WJLCZ4Rp+l",
-	"6hidNVns/JpkiptJvphkFGy3p4k1t/kX3ukm5nuh1hgkguJQw7ATrq7RMPSyVSGZZCNv72u8TZNQM1Zq",
-	"l23VOtfJPZ6+qN8GiXSN+w2PNbVLqKtO4Z0lPiKgOKoXUwrphWofVJZIaptGp06i8iiUVh5v1YCPFNS1",
-	"UDZmgUs5N6fOm+eALO/mbRg+ZG/xntjLBnLP25a209em7X52ygdWq9D66i1RW55P6u6Dlgcw9KfEb1OT",
-	"lapby2vlgtFOnX+doCcndtjdajbrJ1D7KTGPEPbA2LRzMGVpHMIWsp3eqxAcav/+2crKFbFOYmqrIE/e",
-	"jbOmIzb36uB9D5N6CWtLjPJs/z17j1V+QJ8MR2WMrK/35zNBbsvQlLkDr6vQIeMhgud5Pyf4NLwJlCHG",
-	"o1/aD+V9HOIEvmPf2YG84imH+4TrwPE+Olz71vY3uvq+/xMAAP//UDKQcOwMAAA=",
+	"H4sIAAAAAAAC/+yVTU/bQBCG/8pqzlESKCff+JCqXFrUVuqh4rCsJ7HpenfZGTdYkf97Nesk2EkoraAI",
+	"CU6xnNn5eP3Muyso3dxDtgIu2SJk8NH7hUV1ri26XEf1tXFGnV7OYAS/MFLpHWQwHR+Np9COwAd0OpSQ",
+	"wYfxdHwCIwiaC5KEE7NOQZPV5nGWtxP5L3hi+fUBo+bSu1kOGVx64k1dOt8eSUmjrpAxEmQ/pGfIUiEY",
+	"gdOVtG364RFv6zJiDhnHGkdApsBKpymbINHEsXQLaNurLhiJz3zeSITxjtGl7nQItjSpv8kNyeCrXqoQ",
+	"pXsuMU3btbFXQNLPI1Lxzf/ElCBHMrEM3An5Zd2pWhboVE2lW6jPpzUX6ng8VbrmAh2ve1DslfHOoWF5",
+	"5ALV7sc6vZyNRZPaWn0tn7Obf3fq7Rt/fYOGoW3bXdHSCwreUTff8fToCeoQa67TE97pKiTQqDYGieAv",
+	"2xvqtp3YRNSMuVpnm9fWNiL7yZP6rZBIL3DY8LamthF13ii8K4kPDDA6OC/G6OMTp92pLJFUV5WOjUQl",
+	"KZRWDpdqsw9SUC9kbbZZ4ErOTahx5l82U4zgBZdywN70NbGXHPGet462k+em7V475Tyrua9d/pKozS56",
+	"dYegJQE2/Sm5QGLVOdSy5EJZb7RVF2c99OTEGrulZlM8gtp3iXmAsNsaY3OPmLYW+ixtRRg437X3FrV7",
+	"/WylyRWxjmJqcy8rb7da0wGbe3bwPvlevYiLkhhlbf8/ew9V3qFPxFEJI7ktB/r0kOsY6jO353U5WmTc",
+	"R/AivU8J3g2vB6UP4eBN+6a8j33owXfont2QN3rM4d7h2nO8tw7X0Nr+RFfbtr8DAAD//8F5mfO9DQAA",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
