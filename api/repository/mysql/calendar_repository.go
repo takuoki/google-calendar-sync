@@ -26,7 +26,6 @@ func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobjec
 		"SELECT id, name, refresh_token FROM calendars WHERE id = ?",
 		calendarID,
 	).Scan(&calendar.ID, &calendar.Name, &refreshToken)
-	// TODO: Null の場合と、非 Null の場合で正しく取得できることを確認
 
 	if err != nil {
 		if err == sql.ErrNoRows {
