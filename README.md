@@ -9,6 +9,7 @@ google-calendar-sync is a sample application for synchronizing Google Calendar e
   - [Running in a local environment](#running-in-a-local-environment)
   - [Running on Google Cloud](#running-on-google-cloud)
 - [Specifications](#specifications)
+- [OAuth 2.0 Support](#oauth-20-support)
 
 ## Requirements
 
@@ -174,3 +175,14 @@ sequenceDiagram
     API->>Webhook: success
     deactivate API
 ```
+
+## OAuth 2.0 Support
+
+The above implementation connects to the target calendar by granting access permissions to the service account. However, it is also possible to connect to a calendar authorized via OAuth 2.0 using a `refreshToken`.
+
+In this case, instead of `GOOGLE_APPLICATION_CREDENTIALS`, the following environment variables need to be set. Additionally, when registering a calendar, the `refreshToken` must also be registered.
+
+- OAUTH_CLIENT_ID
+- OAUTH_CLIENT_SECRET
+- OAUTH_REDIRECT_URL
+- CRYPT_KEY
