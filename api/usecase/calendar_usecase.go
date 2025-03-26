@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/takuoki/golib/applog"
+	"github.com/takuoki/google-calendar-sync/api/domain"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 	"github.com/takuoki/google-calendar-sync/api/repository"
@@ -36,13 +37,11 @@ func (u *calendarUsecase) Create(ctx context.Context, calendarID valueobject.Cal
 	name string, refreshToken *string) error {
 
 	if u.useOauth && refreshToken == nil {
-		// TODO: ClientError
-		return fmt.Errorf("refresh token is required")
+		return domain.RequiredError("refreshToken")
 	}
 
 	if !u.useOauth && refreshToken != nil {
-		// TODO: ClientError
-		return fmt.Errorf("refresh token is not required")
+		return domain.NotAllowedError("refreshToken")
 	}
 
 	err := u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {

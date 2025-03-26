@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	echo "github.com/labstack/echo/v4"
+	"github.com/takuoki/google-calendar-sync/api/domain"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 	"github.com/takuoki/google-calendar-sync/api/openapi"
 )
@@ -14,13 +15,11 @@ func (h *handler) PostCalendarsCalendarId(c echo.Context, calendarID string) err
 
 	var req openapi.PostCalendarsCalendarIdJSONBody
 	if err := c.Bind(&req); err != nil {
-		// TODO: ClientError
-		return fmt.Errorf("invalid request body: %w", err)
+		return domain.InvalidJSONError
 	}
 
 	if req.Name == nil {
-		// TODO: ClientError
-		return fmt.Errorf("name is required")
+		return domain.RequiredError("name")
 	}
 
 	err := h.calendarUsecase.Create(ctx, valueobject.CalendarID(calendarID), *req.Name, req.RefreshToken)
