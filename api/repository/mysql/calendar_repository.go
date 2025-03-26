@@ -10,8 +10,11 @@ import (
 
 	"github.com/takuoki/google-calendar-sync/api/domain"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
+	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
+
+var refreshTokenCache = service.NewCache[valueobject.CalendarID, string]()
 
 func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Calendar, error) {
 	var calendar entity.Calendar
