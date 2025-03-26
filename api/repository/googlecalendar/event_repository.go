@@ -73,8 +73,6 @@ func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
 
 		for _, item := range events.Items {
 
-			logger.Debugf(ctx, "list events: item=%+v", item)
-
 			start, err := convertDateTime(item.Start)
 			if err != nil {
 				return nil, "", fmt.Errorf("fail to convert start datetime: %w", err)
