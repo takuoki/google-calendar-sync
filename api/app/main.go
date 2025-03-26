@@ -134,15 +134,30 @@ func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
 
 func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (openapi.ServerInterface, error) {
 
+	var err error
+
+	oauthClientID := os.Getenv("OAUTH_CLIENT_ID")
+
+	useOauth := false
+	if oauthClientID != "" {
+		useOauth = true
+	}
+
 	// Service
 	clockService := service.NewClock()
 
+	var cryptService *service.Crypt
+	if useOauth {
+		cryptService, err = service.NewCrypt([]byte(os.Getenv("CRYPT_KEY")))
+		if err != nil {
+			return nil, fmt.Errorf("fail to create crypt service: %w", err)
+		}
+	}
+
 	// Repository
-	mysqlRepo := mysql.NewMysqlRepository(db, clockService, logger)
+	mysqlRepo := mysql.NewMysqlRepository(db, clockService, cryptService, logger)
 
 	var googleCalendarRepo repository.GoogleCalendarRepository
-	var useOauth bool
-	var err error
 	if oauthClientID := os.Getenv("OAUTH_CLIENT_ID"); oauthClientID == "" {
 		googleCalendarRepo, err = googlecalendar.NewGoogleCalendarRepository(
 			ctx, os.Getenv("WEBHOOK_BASE_URL"), clockService, logger)
@@ -156,8 +171,6 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 		if err != nil {
 			return nil, fmt.Errorf("fail to create google calendar with oauth repository: %w", err)
 		}
-
-		useOauth = true
 	}
 
 	// Usecase

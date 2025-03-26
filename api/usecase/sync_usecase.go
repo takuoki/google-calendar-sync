@@ -17,14 +17,14 @@ type SyncUsecase interface {
 }
 
 type syncUsecase struct {
-	clockService       service.Clock
+	clockService       *service.Clock
 	googleCalenderRepo repository.GoogleCalendarRepository
 	databaseRepo       repository.DatabaseRepository
 	logger             applog.Logger
 }
 
 func NewSyncUsecase(
-	clockService service.Clock,
+	clockService *service.Clock,
 	googleCalenderRepo repository.GoogleCalendarRepository,
 	databaseRepo repository.DatabaseRepository,
 	logger applog.Logger,

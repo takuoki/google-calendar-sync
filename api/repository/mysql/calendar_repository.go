@@ -17,15 +17,15 @@ import (
 var refreshTokenCache = service.NewCache[valueobject.CalendarID, string]()
 
 func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Calendar, error) {
-	var calendar entity.Calendar
 
-	// TODO: refresh_token は複合化して返す
+	var calendar entity.Calendar
+	var refreshToken sql.NullString
 
 	err := r.db.QueryRowContext(
 		ctx,
 		"SELECT id, name, refresh_token FROM calendars WHERE id = ?",
 		calendarID,
-	).Scan(&calendar.ID, &calendar.Name, &calendar.RefreshToken)
+	).Scan(&calendar.ID, &calendar.Name, &refreshToken)
 	// TODO: Null の場合と、非 Null の場合で正しく取得できることを確認
 
 	if err != nil {
@@ -33,6 +33,18 @@ func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobjec
 			return nil, domain.CalendarNotFoundError
 		}
 		return nil, fmt.Errorf("fail to select calendar: %w", err)
+	}
+
+	if refreshToken.Valid {
+		if r.cryptService != nil {
+			decrypted, err := r.cryptService.Decrypt(refreshToken.String)
+			if err != nil {
+				return nil, fmt.Errorf("fail to decrypt refresh token: %w", err)
+			}
+			calendar.RefreshToken = &decrypted
+		} else {
+			calendar.RefreshToken = &refreshToken.String
+		}
 	}
 
 	if calendar.RefreshToken != nil {
@@ -55,12 +67,26 @@ func (r *mysqlRepository) ListCalendars(ctx context.Context) ([]entity.Calendar,
 	var calendars []entity.Calendar
 	for rows.Next() {
 		var calendar entity.Calendar
-		if err := rows.Scan(&calendar.ID, &calendar.Name, &calendar.RefreshToken); err != nil {
+		var refreshToken sql.NullString
+
+		if err := rows.Scan(&calendar.ID, &calendar.Name, &refreshToken); err != nil {
 			return nil, fmt.Errorf("fail to scan calendar: %w", err)
 		}
+
+		if refreshToken.Valid {
+			if r.cryptService != nil {
+				decrypted, err := r.cryptService.Decrypt(refreshToken.String)
+				if err != nil {
+					return nil, fmt.Errorf("fail to decrypt refresh token: %w", err)
+				}
+				calendar.RefreshToken = &decrypted
+			} else {
+				calendar.RefreshToken = &refreshToken.String
+			}
+		}
+
 		calendars = append(calendars, calendar)
 
-		// TODO: refresh_token は複合化して返す
 		if calendar.RefreshToken != nil {
 			refreshTokenCache.Set(calendar.ID, *calendar.RefreshToken)
 		}
@@ -91,12 +117,19 @@ func (r *mysqlRepository) GetRefreshToken(ctx context.Context, calendarID valueo
 
 func (tx *mysqlTransaction) CreateCalendar(ctx context.Context, calendar entity.Calendar) error {
 
-	// TODO: refresh_token は暗号化してDBに保存する
+	refreshToken := calendar.RefreshToken
+	if tx.cryptService != nil && refreshToken != nil {
+		encrypted, err := tx.cryptService.Encrypt(*refreshToken)
+		if err != nil {
+			return fmt.Errorf("fail to encrypt refresh token: %w", err)
+		}
+		refreshToken = &encrypted
+	}
 
 	_, err := tx.tx.ExecContext(
 		ctx,
 		"INSERT INTO calendars (id, name, refresh_token) VALUES (?, ?, ?)",
-		calendar.ID, calendar.Name, calendar.RefreshToken,
+		calendar.ID, calendar.Name, refreshToken,
 	)
 
 	if err != nil {

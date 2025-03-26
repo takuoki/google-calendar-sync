@@ -36,7 +36,7 @@ func NewCalendarUsecase(
 func (u *calendarUsecase) Create(ctx context.Context, calendarID valueobject.CalendarID,
 	name string, refreshToken *string) error {
 
-	if u.useOauth && refreshToken == nil {
+	if u.useOauth && (refreshToken == nil || *refreshToken == "") {
 		return domain.RequiredError("refreshToken")
 	}
 
