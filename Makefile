@@ -34,10 +34,14 @@ deploy:
 		--platform managed \
 		--allow-unauthenticated \
 		--service-account $(SERVICE_ACCOUNT) \
-		--update-secrets DB_PASSWORD=$(DB_PASSWORD_SECRET) \
 		--set-env-vars LOG_LEVEL=Debug \
 		--set-env-vars DB_TYPE=cloudsql \
 		--set-env-vars INSTANCE_CONNECTION_NAME=$(PROJECT_ID):$(REGION):$(INSTANCE_NAME) \
 		--set-env-vars DB_NAME=$(DB_NAME) \
 		--set-env-vars DB_USER=$(DB_USER) \
-		--set-env-vars WEBHOOK_BASE_URL=$(API_URL)/api/sync
+		--update-secrets DB_PASSWORD=$(DB_PASSWORD_SECRET) \
+		--set-env-vars WEBHOOK_BASE_URL=$(API_URL)/api/sync \
+		$(if $(OAUTH_CLIENT_ID),--set-env-vars OAUTH_CLIENT_ID=$(OAUTH_CLIENT_ID)) \
+		$(if $(OAUTH_CLIENT_SECRET),--update-secrets OAUTH_CLIENT_SECRET=$(OAUTH_CLIENT_SECRET)) \
+		$(if $(OAUTH_REDIRECT_URL),--set-env-vars OAUTH_REDIRECT_URL=$(OAUTH_REDIRECT_URL)) \
+		$(if $(CRYPT_KEY_SECRET),--update-secrets CRYPT_KEY=$(CRYPT_KEY_SECRET))
