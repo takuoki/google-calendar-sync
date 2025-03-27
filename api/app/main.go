@@ -158,7 +158,7 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 	mysqlRepo := mysql.NewMysqlRepository(db, clockService, cryptService, logger)
 
 	var googleCalendarRepo repository.GoogleCalendarRepository
-	if useOauth {
+	if !useOauth {
 		googleCalendarRepo, err = googlecalendar.NewGoogleCalendarRepository(
 			ctx, os.Getenv("WEBHOOK_BASE_URL"), clockService, logger)
 		if err != nil {
