@@ -32,6 +32,12 @@ jobs:
         run: make run-db
 
       - name: Run Go tests
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_USER: appuser
+          DB_PASSWORD: password
+          DB_NAME: app
         run: |
           cd api
           go test -race -cover ./...

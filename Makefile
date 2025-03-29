@@ -28,7 +28,7 @@ run:
 #: run DB locally
 .PHONY: run-db
 run-db:
-	@docker compose up --build mysql
+	@docker compose up --build -d mysql
 
 #: down local containers
 .PHONY: down
