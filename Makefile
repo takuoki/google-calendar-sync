@@ -13,12 +13,22 @@ gen-openapi:
 .PHONY: test
 test:
 	@golangci-lint run ./api/...
-	@go test -race -cover ./api/...
+	@DB_HOST=127.0.0.1 \
+		DB_PORT=3306 \
+		DB_USER=appuser \
+		DB_PASSWORD=password \
+		DB_NAME=app \
+		go test -race -cover ./api/...
 
-#: run API locally
+#: run API locally (including DB)
 .PHONY: run
 run:
 	@docker-compose up --build
+
+#: run DB locally
+.PHONY: run-db
+run-db:
+	@docker-compose up --build mysql
 
 #: down local containers
 .PHONY: down

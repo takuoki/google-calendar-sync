@@ -32,3 +32,25 @@ func (c *SystemClock) Now() time.Time {
 func (c *SystemClock) Today() time.Time {
 	return c.Now().Truncate(24 * time.Hour)
 }
+
+type MockClock struct {
+	fixedTime time.Time
+}
+
+func NewMockClock() *MockClock {
+	return &MockClock{
+		fixedTime: time.Now(),
+	}
+}
+
+func (c *MockClock) SetFixedTime(t time.Time) {
+	c.fixedTime = t
+}
+
+func (c *MockClock) Now() time.Time {
+	return c.fixedTime
+}
+
+func (c *MockClock) Today() time.Time {
+	return c.fixedTime.Truncate(24 * time.Hour)
+}
