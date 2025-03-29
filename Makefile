@@ -23,17 +23,17 @@ test:
 #: run API locally (including DB)
 .PHONY: run
 run:
-	@docker-compose up --build
+	@docker compose up --build
 
 #: run DB locally
 .PHONY: run-db
 run-db:
-	@docker-compose up --build mysql
+	@docker compose up --build mysql
 
 #: down local containers
 .PHONY: down
 down:
-	@docker-compose down
+	@docker compose down
 
 #: build and push image to artifact registry
 .PHONY: build
