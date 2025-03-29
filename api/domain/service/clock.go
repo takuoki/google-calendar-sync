@@ -9,17 +9,17 @@ type Clock interface {
 	Today() time.Time
 }
 
-type clock struct{}
+type SystemClock struct{}
 
-func NewClock() Clock {
-	return &clock{}
+func NewSystemClock() *SystemClock {
+	return &SystemClock{}
 }
 
-func (c *clock) Now() time.Time {
+func (c *SystemClock) Now() time.Time {
 	loc, _ := time.LoadLocation(location)
 	return time.Now().In(loc)
 }
 
-func (c *clock) Today() time.Time {
+func (c *SystemClock) Today() time.Time {
 	return c.Now().Truncate(24 * time.Hour)
 }

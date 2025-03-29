@@ -144,7 +144,7 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 	}
 
 	// Service
-	clockService := service.NewClock()
+	clockService := service.NewSystemClock()
 
 	var cryptService service.Crypt
 	if useOauth {
