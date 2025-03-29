@@ -146,9 +146,9 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 	// Service
 	clockService := service.NewClock()
 
-	var cryptService *service.Crypt
+	var cryptService service.Crypt
 	if useOauth {
-		cryptService, err = service.NewCrypt([]byte(os.Getenv("CRYPT_KEY")))
+		cryptService, err = service.NewAESCrypt([]byte(os.Getenv("CRYPT_KEY")))
 		if err != nil {
 			return nil, fmt.Errorf("fail to create crypt service: %w", err)
 		}

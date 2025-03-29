@@ -51,12 +51,12 @@ func validateArgs(host, port, user, password, dbname string) error {
 type mysqlRepository struct {
 	db           *sql.DB
 	clockService service.Clock
-	cryptService *service.Crypt
+	cryptService service.Crypt
 	logger       applog.Logger
 }
 
 func NewMysqlRepository(db *sql.DB, clockService service.Clock,
-	cryptService *service.Crypt, logger applog.Logger) repository.DatabaseRepository {
+	cryptService service.Crypt, logger applog.Logger) repository.DatabaseRepository {
 	return &mysqlRepository{
 		db:           db,
 		clockService: clockService,
@@ -102,6 +102,6 @@ func (r *mysqlRepository) RunTransaction(ctx context.Context, fn func(ctx contex
 type mysqlTransaction struct {
 	tx           *sql.Tx
 	clockService service.Clock
-	cryptService *service.Crypt
+	cryptService service.Crypt
 	logger       applog.Logger
 }
