@@ -11,11 +11,10 @@ import (
 
 	"github.com/takuoki/golib/applog"
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
-	"github.com/takuoki/google-calendar-sync/api/repository"
 	"github.com/takuoki/google-calendar-sync/api/repository/mysql"
 )
 
-var databaseRepo repository.DatabaseRepository
+var mysqlRepo *mysql.MysqlRepository
 
 func TestMain(m *testing.M) {
 
@@ -47,7 +46,7 @@ func TestMain(m *testing.M) {
 		panic("fail to create logger: " + err.Error())
 	}
 
-	databaseRepo = mysql.NewMysqlRepository(db, service.NewMockClock(), nil, logger)
+	mysqlRepo = mysql.NewMysqlRepository(db, service.NewMockClock(), nil, logger)
 
 	exitCode := m.Run()
 

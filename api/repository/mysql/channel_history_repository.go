@@ -3,10 +3,31 @@ package mysql
 import (
 	"context"
 	"fmt"
+	"testing"
 
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
+
+func (r *MysqlRepository) GetChannelHistory(ctx context.Context, t *testing.T,
+	calendarID valueobject.CalendarID) (*entity.Channel, error) {
+	t.Helper()
+
+	var channel entity.Channel
+
+	err := r.db.QueryRowContext(
+		ctx,
+		"SELECT calendar_id, start_time, resource_id, expiration "+
+			"FROM channel_histories WHERE calendar_id = ?",
+		calendarID,
+	).Scan(&channel.CalendarID, &channel.StartTime, &channel.ResourceID, &channel.Expiration)
+
+	if err != nil {
+		return nil, fmt.Errorf("fail to select channel history: %w", err)
+	}
+
+	return &channel, nil
+}
 
 func (tx *mysqlTransaction) ListActiveChannelHistoriesWithLock(
 	ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Channel, error) {

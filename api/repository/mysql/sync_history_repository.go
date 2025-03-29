@@ -9,7 +9,7 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
-func (r *mysqlRepository) GetLatestSyncToken(
+func (r *MysqlRepository) GetLatestSyncToken(
 	ctx context.Context, calendarID valueobject.CalendarID) (string, error) {
 
 	var syncToken string

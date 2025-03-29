@@ -12,6 +12,12 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+type database interface {
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
 func ConnectDB(host, port, user, password, dbname string) (*sql.DB, error) {
 
 	if err := validateArgs(host, user, password, dbname); err != nil {
@@ -48,7 +54,7 @@ func validateArgs(host, user, password, dbname string) error {
 	return nil
 }
 
-type mysqlRepository struct {
+type MysqlRepository struct {
 	db           *sql.DB
 	clockService service.Clock
 	cryptService service.Crypt
@@ -56,8 +62,8 @@ type mysqlRepository struct {
 }
 
 func NewMysqlRepository(db *sql.DB, clockService service.Clock,
-	cryptService service.Crypt, logger applog.Logger) repository.DatabaseRepository {
-	return &mysqlRepository{
+	cryptService service.Crypt, logger applog.Logger) *MysqlRepository {
+	return &MysqlRepository{
 		db:           db,
 		clockService: clockService,
 		cryptService: cryptService,
@@ -65,7 +71,7 @@ func NewMysqlRepository(db *sql.DB, clockService service.Clock,
 	}
 }
 
-func (r *mysqlRepository) RunTransaction(ctx context.Context, fn func(ctx context.Context, tx repository.DatabaseTransaction) error) (er error) {
+func (r *MysqlRepository) RunTransaction(ctx context.Context, fn func(ctx context.Context, tx repository.DatabaseTransaction) error) (er error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("fail to begin transaction: %w", err)
