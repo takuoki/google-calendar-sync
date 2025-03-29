@@ -14,7 +14,7 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
-var refreshTokenCache = service.NewCache[valueobject.CalendarID, string]()
+var refreshTokenCache = service.NewInMemoryCache[valueobject.CalendarID, string]()
 
 func (r *mysqlRepository) GetCalendar(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Calendar, error) {
 
@@ -61,7 +61,11 @@ func (r *mysqlRepository) ListCalendars(ctx context.Context) ([]entity.Calendar,
 	if err != nil {
 		return nil, fmt.Errorf("fail to select calendars: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			r.logger.Errorf(ctx, "fail to close rows: %s", closeErr)
+		}
+	}()
 
 	var calendars []entity.Calendar
 	for rows.Next() {

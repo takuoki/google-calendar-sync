@@ -21,7 +21,11 @@ func (tx *mysqlTransaction) ListActiveChannelHistoriesWithLock(
 	if err != nil {
 		return nil, fmt.Errorf("fail to select channel history: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			tx.logger.Errorf(ctx, "fail to close rows: %s", closeErr)
+		}
+	}()
 
 	var channels []entity.Channel
 	for rows.Next() {

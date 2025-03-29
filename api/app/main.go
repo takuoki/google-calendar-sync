@@ -137,11 +137,7 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 	var err error
 
 	oauthClientID := os.Getenv("OAUTH_CLIENT_ID")
-
-	useOauth := false
-	if oauthClientID != "" {
-		useOauth = true
-	}
+	useOauth := oauthClientID != ""
 
 	// Service
 	clockService, err := service.NewSystemClock("Asia/Tokyo")

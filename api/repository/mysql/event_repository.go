@@ -85,7 +85,11 @@ func (tx *mysqlTransaction) fetchEventMapWithLock(
 	if err != nil {
 		return nil, fmt.Errorf("fail to select events: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			tx.logger.Errorf(ctx, "fail to close rows: %s", closeErr)
+		}
+	}()
 
 	eventMap := map[valueobject.EventID]entity.Event{}
 	for rows.Next() {

@@ -9,6 +9,11 @@ gen-openapi:
 	@rm -f ./api/openapi/openapi.gen.go
 	@oapi-codegen ./api/openapi/openapi.yml > ./api/openapi/openapi.gen.go
 
+#: run golangci-lint
+.PHONY: lint
+lint:
+	@golangci-lint run ./api/...
+
 #: run API locally
 .PHONY: run
 run:

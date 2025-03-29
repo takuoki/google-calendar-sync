@@ -17,10 +17,10 @@ func ErrorMiddleware(logger applog.Logger) echo.MiddlewareFunc {
 			if err := next(c); err != nil {
 				var e *domain.ClientError
 				if errors.As(err, &e) {
-					failure(c, e.Code, e.Message)
+					return failure(c, e.Code, e.Message)
 				} else {
 					logger.Errorf(ctx, "unexpected error: %v", err)
-					failure(c, http.StatusInternalServerError, "internal server error")
+					return failure(c, http.StatusInternalServerError, "internal server error")
 				}
 			}
 
