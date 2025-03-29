@@ -28,8 +28,30 @@ jobs:
           version: v2.0
           working-directory: api
 
+      - name: Load cached Docker image
+        uses: actions/cache@v4
+        with:
+          path: /tmp/docker-cache
+          key: docker-${{ runner.os }}-mysql-8
+          restore-keys: |
+            docker-${{ runner.os }}-mysql-
+
+      - name: Load cached MySQL image (if available)
+        run: |
+          if [ -f /tmp/docker-cache/mysql.tar ]; then
+            docker load -i /tmp/docker-cache/mysql.tar || true
+          fi
+
+      - name: Pull MySQL image if not cached
+        run: |
+          if ! docker image inspect mysql:8.0 > /dev/null 2>&1; then
+            docker pull mysql:8.0
+            mkdir -p /tmp/docker-cache
+            docker save mysql:8.0 -o /tmp/docker-cache/mysql.tar
+          fi
+
       - name: Start database
-        run: make run-db
+        run: docker compose up --build -d mysql
 
       - name: Run Go tests
         env:
