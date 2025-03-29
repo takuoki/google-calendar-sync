@@ -29,6 +29,4 @@ jobs:
           working-directory: api
 
       - name: Run Go tests
-        run: |
-          cd api
-          go test -race -cover ./...
+        run: go test -race -cover ./api/...
