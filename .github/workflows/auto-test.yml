@@ -22,12 +22,11 @@ jobs:
           go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
 
-      # Use golangci-lint-action
-      # - name: Run golangci-lint
-      #   uses: golangci/golangci-lint-action@v7
-      #   with:
-      #     version: v2.0
-      #     args: ./api/...
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.0
+          working-directory: api
 
       - name: Run Go tests
         run: |
