@@ -144,7 +144,10 @@ func setupApplication(ctx context.Context, db *sql.DB, logger applog.Logger) (op
 	}
 
 	// Service
-	clockService := service.NewSystemClock()
+	clockService, err := service.NewSystemClock("Asia/Tokyo")
+	if err != nil {
+		return nil, fmt.Errorf("fail to create clock service: %w", err)
+	}
 
 	var cryptService service.Crypt
 	if useOauth {

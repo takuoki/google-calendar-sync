@@ -1,23 +1,32 @@
 package service
 
-import "time"
-
-const location = "Asia/Tokyo"
+import (
+	"fmt"
+	"time"
+)
 
 type Clock interface {
 	Now() time.Time
 	Today() time.Time
 }
 
-type SystemClock struct{}
+type SystemClock struct {
+	location *time.Location
+}
 
-func NewSystemClock() *SystemClock {
-	return &SystemClock{}
+func NewSystemClock(location string) (*SystemClock, error) {
+	loc, err := time.LoadLocation(location)
+	if err != nil {
+		return nil, fmt.Errorf("fail to load location: %w", err)
+	}
+
+	return &SystemClock{
+		location: loc,
+	}, nil
 }
 
 func (c *SystemClock) Now() time.Time {
-	loc, _ := time.LoadLocation(location)
-	return time.Now().In(loc)
+	return time.Now().In(c.location)
 }
 
 func (c *SystemClock) Today() time.Time {
