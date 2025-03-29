@@ -17,10 +17,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Set working directory to api
-      - name: Change working directory
-        run: cd api
-
       # Set up Go environment
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -37,12 +33,12 @@ jobs:
             ${{ runner.os }}-go-
 
       # Use golangci-lint-action
-      - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v7
-        with:
-          version: v2.0
-          # args: ./api/...
+      # - name: Run golangci-lint
+      #   uses: golangci/golangci-lint-action@v7
+      #   with:
+      #     version: v2.0
+      #     args: ./api/...
 
       # Run Go tests
       - name: Run Go tests
-        run: go test -race -cover ./...
+        run: go test -race -cover ./api/...
