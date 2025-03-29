@@ -28,7 +28,14 @@ jobs:
           version: v2.0
           working-directory: api
 
+      - name: Start database
+        run: make run-db
+
       - name: Run Go tests
         run: |
           cd api
           go test -race -cover ./...
+
+      - name: Stop database
+        if: always()
+        run: make down
