@@ -115,7 +115,7 @@ func (r *googleCalendarWithOauthRepository) Watch(ctx context.Context, calendarI
 	return watch(ctx, service, r.webhookBaseURL, r.clockService, calendarID)
 }
 
-func watch(ctx context.Context, service *calendar.Service, webhookBaseURL string, clockService *service.Clock,
+func watch(ctx context.Context, service *calendar.Service, webhookBaseURL string, clockService service.Clock,
 	calendarID valueobject.CalendarID) (*entity.Channel, error) {
 
 	// TODO: ttl の設定を追加したい

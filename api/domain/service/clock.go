@@ -2,17 +2,24 @@ package service
 
 import "time"
 
-type Clock struct{}
+const location = "Asia/Tokyo"
 
-func NewClock() *Clock {
-	return &Clock{}
+type Clock interface {
+	Now() time.Time
+	Today() time.Time
 }
 
-func (c *Clock) Now() time.Time {
-	return time.Now()
+type clock struct{}
+
+func NewClock() Clock {
+	return &clock{}
 }
 
-func (c *Clock) Today() time.Time {
-	loc, _ := time.LoadLocation("Asia/Tokyo")
-	return c.Now().In(loc).Truncate(24 * time.Hour)
+func (c *clock) Now() time.Time {
+	loc, _ := time.LoadLocation(location)
+	return time.Now().In(loc)
+}
+
+func (c *clock) Today() time.Time {
+	return c.Now().Truncate(24 * time.Hour)
 }

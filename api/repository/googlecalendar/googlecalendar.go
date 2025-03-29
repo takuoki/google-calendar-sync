@@ -19,12 +19,12 @@ import (
 type googleCalendarRepository struct {
 	webhookBaseURL string
 	service        *calendar.Service
-	clockService   *service.Clock
+	clockService   service.Clock
 	logger         applog.Logger
 }
 
 func NewGoogleCalendarRepository(ctx context.Context, webhookBaseURL string,
-	clockService *service.Clock, logger applog.Logger) (repository.GoogleCalendarRepository, error) {
+	clockService service.Clock, logger applog.Logger) (repository.GoogleCalendarRepository, error) {
 
 	if webhookBaseURL == "" {
 		return nil, fmt.Errorf("webhook base url is required")
@@ -51,12 +51,12 @@ type googleCalendarWithOauthRepository struct {
 	webhookBaseURL       string
 	oauth2Config         *oauth2.Config
 	refreshTokenResolver RefreshTokenResolver
-	clockService         *service.Clock
+	clockService         service.Clock
 	logger               applog.Logger
 }
 
 func NewGoogleCalendarWithOauthRepository(webhookBaseURL, oauthClientID, oauthClientSecret, oauthRedirectURL string,
-	refreshTokenResolver RefreshTokenResolver, clockService *service.Clock, logger applog.Logger) (repository.GoogleCalendarRepository, error) {
+	refreshTokenResolver RefreshTokenResolver, clockService service.Clock, logger applog.Logger) (repository.GoogleCalendarRepository, error) {
 
 	if webhookBaseURL == "" {
 		return nil, fmt.Errorf("webhook base url is required")
