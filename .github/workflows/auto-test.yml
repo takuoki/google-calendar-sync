@@ -41,4 +41,6 @@ jobs:
 
       # Run Go tests
       - name: Run Go tests
-        run: go test -race -cover ./api/...
+        run: |
+          cd api
+          go test -race -cover ./...
