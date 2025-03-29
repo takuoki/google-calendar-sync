@@ -14,7 +14,7 @@ import (
 
 func ConnectDB(host, port, user, password, dbname string) (*sql.DB, error) {
 
-	if err := validateArgs(host, port, user, password, dbname); err != nil {
+	if err := validateArgs(host, user, password, dbname); err != nil {
 		return nil, err
 	}
 
@@ -32,7 +32,7 @@ func ConnectDB(host, port, user, password, dbname string) (*sql.DB, error) {
 	return db, nil
 }
 
-func validateArgs(host, port, user, password, dbname string) error {
+func validateArgs(host, user, password, dbname string) error {
 	if host == "" {
 		return fmt.Errorf("database host is required")
 	}
