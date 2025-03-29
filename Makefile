@@ -28,7 +28,7 @@ run:
 #: run DB locally
 .PHONY: run-db
 run-db:
-	@docker compose up --build -d mysql
+	@docker compose up --build mysql
 
 #: down local containers
 .PHONY: down
@@ -58,6 +58,16 @@ deploy:
 		--update-secrets DB_PASSWORD=$(DB_PASSWORD_SECRET) \
 		--set-env-vars WEBHOOK_BASE_URL=$(API_URL)/api/sync \
 		$(if $(OAUTH_CLIENT_ID),--set-env-vars OAUTH_CLIENT_ID=$(OAUTH_CLIENT_ID)) \
-		$(if $(OAUTH_CLIENT_SECRET),--update-secrets OAUTH_CLIENT_SECRET=$(OAUTH_CLIENT_SECRET)) \
+		$(if $(OAUTH_CLIENT_SECRET),--set-env-vars OAUTH_CLIENT_SECRET=$(OAUTH_CLIENT_SECRET)) \
 		$(if $(OAUTH_REDIRECT_URL),--set-env-vars OAUTH_REDIRECT_URL=$(OAUTH_REDIRECT_URL)) \
-		$(if $(CRYPT_KEY_SECRET),--update-secrets CRYPT_KEY=$(CRYPT_KEY_SECRET))
+		$(if $(CRYPT_KEY_SECRET),--set-env-vars CRYPT_KEY=$(CRYPT_KEY_SECRET))
+
+#: create Cloud Scheduler job
+.PHONY: create-scheduler
+create-scheduler:
+	@gcloud scheduler jobs create http $(SCHEDULER_NAME) \
+		--location $(REGION) \
+		--schedule '$(SCHEDULER_SCHEDULE)' \
+		--time-zone $(SCHEDULER_TIMEZONE) \
+		--http-method POST \
+		--uri $(API_URL)/api/watch/?all=true
