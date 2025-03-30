@@ -29,9 +29,10 @@ func setupWatchUsecase(mockRepo repository.GoogleCalendarRepository) (usecase.Wa
 }
 
 func TestWatchUsecase_StartAll_Success(t *testing.T) {
-	t.Parallel()
+	// This test cannot be executed in parallel because it modifies shared state in mysqlRepo.
 
 	ctx := context.Background()
+	cleanup(ctx, t)
 
 	// Given
 	mockRepo := &GoogleCalendarRepositoryMock{

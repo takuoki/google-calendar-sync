@@ -172,3 +172,21 @@ func createCalendar(ctx context.Context, db database,
 
 	return nil
 }
+
+func (r *MysqlRepository) DeleteAllCalendarsForMain(ctx context.Context, m *testing.M) error {
+	return r.deleteAllCalendars(ctx)
+}
+
+func (r *MysqlRepository) DeleteAllCalendars(ctx context.Context, t *testing.T) error {
+	t.Helper()
+	return r.deleteAllCalendars(ctx)
+}
+
+func (r *MysqlRepository) deleteAllCalendars(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM calendars")
+	if err != nil {
+		return fmt.Errorf("fail to delete calendars: %w", err)
+	}
+
+	return nil
+}

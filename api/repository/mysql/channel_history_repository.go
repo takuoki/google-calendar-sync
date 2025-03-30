@@ -95,3 +95,21 @@ func (tx *mysqlTransaction) StopActiveChannels(
 
 	return nil
 }
+
+func (r *MysqlRepository) DeleteAllChannelHistoriesForMain(ctx context.Context, m *testing.M) error {
+	return r.deleteAllChannelHistories(ctx)
+}
+
+func (r *MysqlRepository) DeleteAllChannelHistories(ctx context.Context, t *testing.T) error {
+	t.Helper()
+	return r.deleteAllChannelHistories(ctx)
+}
+
+func (r *MysqlRepository) deleteAllChannelHistories(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM channel_histories")
+	if err != nil {
+		return fmt.Errorf("fail to delete channel histories: %w", err)
+	}
+
+	return nil
+}

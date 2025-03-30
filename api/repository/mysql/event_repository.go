@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"testing"
 
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
@@ -131,6 +132,24 @@ func (tx *mysqlTransaction) updateEvent(ctx context.Context, event entity.Event)
 		event.Summary, event.Start, event.End, event.Status, event.ID)
 	if err != nil {
 		return fmt.Errorf("fail to update event: %w", err)
+	}
+
+	return nil
+}
+
+func (r *MysqlRepository) DeleteAllEventsForMain(ctx context.Context, m *testing.M) error {
+	return r.deleteAllEvents(ctx)
+}
+
+func (r *MysqlRepository) DeleteAllEvents(ctx context.Context, t *testing.T) error {
+	t.Helper()
+	return r.deleteAllEvents(ctx)
+}
+
+func (r *MysqlRepository) deleteAllEvents(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM events")
+	if err != nil {
+		return fmt.Errorf("fail to delete all events: %w", err)
 	}
 
 	return nil

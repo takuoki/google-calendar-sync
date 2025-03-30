@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"testing"
 	"time"
 
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
@@ -45,6 +46,24 @@ func (tx *mysqlTransaction) CreateSyncHistory(
 
 	if err != nil {
 		return fmt.Errorf("fail to insert sync history: %w", err)
+	}
+
+	return nil
+}
+
+func (r *MysqlRepository) DeleteAllSyncHistoriesForMain(ctx context.Context, m *testing.M) error {
+	return r.deleteAllSyncHistories(ctx)
+}
+
+func (r *MysqlRepository) DeleteAllSyncHistories(ctx context.Context, t *testing.T) error {
+	t.Helper()
+	return r.deleteAllSyncHistories(ctx)
+}
+
+func (r *MysqlRepository) deleteAllSyncHistories(ctx context.Context) error {
+	_, err := r.db.ExecContext(ctx, "DELETE FROM sync_histories")
+	if err != nil {
+		return fmt.Errorf("fail to delete all sync histories: %w", err)
 	}
 
 	return nil

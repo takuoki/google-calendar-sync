@@ -31,6 +31,7 @@ func TestMain(m *testing.M) {
 		panic("fail to connect to the database: " + err.Error())
 	}
 	defer func() {
+		cleanupForMain(ctx, m)
 		if err := db.Close(); err != nil {
 			panic("fail to close database: " + err.Error())
 		}
@@ -48,22 +49,7 @@ func TestMain(m *testing.M) {
 
 	mysqlRepo = mysql.NewMysqlRepository(db, service.NewMockClock(), nil, logger)
 
-	exitCode := m.Run()
-
-	// Truncate all data from existing tables
-	tables := []string{
-		"sync_histories",
-		"channel_histories",
-		"events",
-		"calendars",
-	}
-	for _, table := range tables {
-		if _, err := db.Exec("DELETE FROM " + table); err != nil {
-			panic("fail to delete from " + table + ": " + err.Error())
-		}
-	}
-
-	os.Exit(exitCode)
+	m.Run()
 }
 
 func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
@@ -85,4 +71,36 @@ func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func cleanupForMain(ctx context.Context, m *testing.M) {
+	if err := mysqlRepo.DeleteAllSyncHistoriesForMain(ctx, m); err != nil {
+		panic("fail to delete all sync histories: " + err.Error())
+	}
+	if err := mysqlRepo.DeleteAllChannelHistoriesForMain(ctx, m); err != nil {
+		panic("fail to delete all channel histories: " + err.Error())
+	}
+	if err := mysqlRepo.DeleteAllEventsForMain(ctx, m); err != nil {
+		panic("fail to delete all events: " + err.Error())
+	}
+	if err := mysqlRepo.DeleteAllCalendarsForMain(ctx, m); err != nil {
+		panic("fail to delete all calendars: " + err.Error())
+	}
+}
+
+func cleanup(ctx context.Context, t *testing.T) {
+	t.Helper()
+
+	if err := mysqlRepo.DeleteAllSyncHistories(ctx, t); err != nil {
+		panic("fail to delete all sync histories: " + err.Error())
+	}
+	if err := mysqlRepo.DeleteAllChannelHistories(ctx, t); err != nil {
+		panic("fail to delete all channel histories: " + err.Error())
+	}
+	if err := mysqlRepo.DeleteAllEvents(ctx, t); err != nil {
+		panic("fail to delete all events: " + err.Error())
+	}
+	if err := mysqlRepo.DeleteAllCalendars(ctx, t); err != nil {
+		panic("fail to delete all calendars: " + err.Error())
+	}
 }
