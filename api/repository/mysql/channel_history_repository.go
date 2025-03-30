@@ -9,7 +9,7 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
-func (r *MysqlRepository) GetChannelHistory(ctx context.Context, t *testing.T,
+func (r *MysqlRepository) GetLatestChannelHistory(ctx context.Context, t *testing.T,
 	calendarID valueobject.CalendarID) (*entity.Channel, error) {
 	t.Helper()
 
@@ -18,7 +18,7 @@ func (r *MysqlRepository) GetChannelHistory(ctx context.Context, t *testing.T,
 	err := r.db.QueryRowContext(
 		ctx,
 		"SELECT calendar_id, start_time, resource_id, expiration "+
-			"FROM channel_histories WHERE calendar_id = ?",
+			"FROM channel_histories WHERE calendar_id = ? ORDER BY start_time DESC LIMIT 1",
 		calendarID,
 	).Scan(&channel.CalendarID, &channel.StartTime, &channel.ResourceID, &channel.Expiration)
 

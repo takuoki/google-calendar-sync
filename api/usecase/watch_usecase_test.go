@@ -50,12 +50,12 @@ func TestWatchUsecase_StartAll_Success(t *testing.T) {
 	watchUsecase, _ := setupWatchUsecase(mockRepo)
 
 	require.NoError(t, mysqlRepo.CreateCalendar(ctx, t, entity.Calendar{
-		ID:   "watch-all-success-1",
+		ID:   "start-all-success-1",
 		Name: "Test Calendar 1",
 	}))
 
 	require.NoError(t, mysqlRepo.CreateCalendar(ctx, t, entity.Calendar{
-		ID:   "watch-all-success-2",
+		ID:   "start-all-success-2",
 		Name: "Test Calendar 2",
 	}))
 
@@ -64,9 +64,9 @@ func TestWatchUsecase_StartAll_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Then
-	_, err = mysqlRepo.GetChannelHistory(ctx, t, "watch-all-success-1")
+	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, "start-all-success-1")
 	require.NoError(t, err)
 
-	_, err = mysqlRepo.GetChannelHistory(ctx, t, "watch-all-success-2")
+	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, "start-all-success-2")
 	require.NoError(t, err)
 }
