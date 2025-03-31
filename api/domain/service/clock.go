@@ -26,7 +26,7 @@ func NewSystemClock(location string) (*SystemClock, error) {
 }
 
 func (c *SystemClock) Now() time.Time {
-	return time.Now().In(c.location)
+	return time.Now().Truncate(time.Millisecond).In(c.location)
 }
 
 func (c *SystemClock) Today() time.Time {
@@ -39,7 +39,7 @@ type MockClock struct {
 
 func NewMockClock() *MockClock {
 	return &MockClock{
-		fixedTime: time.Now(),
+		fixedTime: time.Now().Truncate(time.Millisecond),
 	}
 }
 
