@@ -130,3 +130,44 @@ func TestWatchUsecase_Start_Success(t *testing.T) {
 	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, calendarID)
 	require.NoError(t, err)
 }
+
+func TestWatchUsecase_Stop_Success(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	// Given
+	mockRepo := &GoogleCalendarRepositoryMock{
+		StopWatchFunc: func(ctx context.Context, channel entity.Channel) error {
+			return nil
+		},
+	}
+
+	watchUsecase, _ := setupWatchUsecase(mockRepo)
+
+	var calendarID valueobject.CalendarID = "stop-success-1"
+	require.NoError(t, mysqlRepo.CreateCalendar(ctx, t, entity.Calendar{
+		ID:   calendarID,
+		Name: "Test Calendar",
+	}))
+
+	startTime := mysqlRepo.Clock(t).Now().Add(-1 * time.Hour)
+	activeChannel := entity.Channel{
+		CalendarID: calendarID,
+		ResourceID: "active-resource-id",
+		StartTime:  startTime,
+		Expiration: startTime.Add(2 * time.Hour),
+		IsStopped:  false,
+	}
+	require.NoError(t, mysqlRepo.CreateChannelHistory(ctx, t, activeChannel))
+
+	// When
+	err := watchUsecase.Stop(ctx, calendarID)
+	require.NoError(t, err)
+
+	// Then
+	// Verify the active channel was stopped
+	stoppedChannel, err := mysqlRepo.GetChannelHistory(ctx, t, calendarID, startTime)
+	require.NoError(t, err)
+	assert.Equal(t, true, stoppedChannel.IsStopped)
+}
