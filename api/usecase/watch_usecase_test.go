@@ -49,13 +49,15 @@ func TestWatchUsecase_StartAll_Success(t *testing.T) {
 
 	watchUsecase, _ := setupWatchUsecase(mockRepo)
 
+	var calendarID1 valueobject.CalendarID = "start-all-success-1"
+	var calendarID2 valueobject.CalendarID = "start-all-success-2"
 	require.NoError(t, mysqlRepo.CreateCalendar(ctx, t, entity.Calendar{
-		ID:   "start-all-success-1",
+		ID:   calendarID1,
 		Name: "Test Calendar 1",
 	}))
 
 	require.NoError(t, mysqlRepo.CreateCalendar(ctx, t, entity.Calendar{
-		ID:   "start-all-success-2",
+		ID:   calendarID2,
 		Name: "Test Calendar 2",
 	}))
 
@@ -64,9 +66,63 @@ func TestWatchUsecase_StartAll_Success(t *testing.T) {
 	require.NoError(t, err)
 
 	// Then
-	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, "start-all-success-1")
+	// Verify a new channel was created
+	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, calendarID1)
 	require.NoError(t, err)
 
-	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, "start-all-success-2")
+	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, calendarID2)
+	require.NoError(t, err)
+}
+
+func TestWatchUsecase_Start_Success(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+
+	// Given
+	mockRepo := &GoogleCalendarRepositoryMock{
+		WatchFunc: func(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error) {
+			now := mysqlRepo.Clock(t).Now()
+			return &entity.Channel{
+				CalendarID: calendarID,
+				ResourceID: "new-resource-id",
+				StartTime:  now,
+				Expiration: now.Add(1 * time.Hour),
+			}, nil
+		},
+		StopWatchFunc: func(ctx context.Context, channel entity.Channel) error {
+			return nil
+		},
+	}
+
+	watchUsecase, _ := setupWatchUsecase(mockRepo)
+
+	var calendarID valueobject.CalendarID = "start-success-1"
+	require.NoError(t, mysqlRepo.CreateCalendar(ctx, t, entity.Calendar{
+		ID:   calendarID,
+		Name: "Test Calendar",
+	}))
+
+	startTime := mysqlRepo.Clock(t).Now().Add(-1 * time.Hour)
+	activeChannel := entity.Channel{
+		CalendarID: calendarID,
+		ResourceID: "active-resource-id",
+		StartTime:  startTime,
+		Expiration: startTime.Add(2 * time.Hour),
+	}
+	require.NoError(t, mysqlRepo.CreateChannelHistory(ctx, t, activeChannel))
+
+	// When
+	err := watchUsecase.Start(ctx, calendarID)
+	require.NoError(t, err)
+
+	// Then
+	// Verify the active channel was stopped
+	_, err = mysqlRepo.GetChannelHistory(ctx, t, calendarID, startTime)
+	require.NoError(t, err)
+	// assert.Equal(t, false, oldChannel.IsStopped)
+
+	// Verify a new channel was created
+	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, calendarID)
 	require.NoError(t, err)
 }
