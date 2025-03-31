@@ -18,10 +18,11 @@ func (r *MysqlRepository) GetLatestChannelHistory(ctx context.Context, t *testin
 
 	err := r.db.QueryRowContext(
 		ctx,
-		"SELECT calendar_id, start_time, resource_id, expiration "+
+		"SELECT calendar_id, start_time, resource_id, expiration, is_stopped "+
 			"FROM channel_histories WHERE calendar_id = ? ORDER BY start_time DESC LIMIT 1",
 		calendarID,
-	).Scan(&channel.CalendarID, &channel.StartTime, &channel.ResourceID, &channel.Expiration)
+	).Scan(&channel.CalendarID, &channel.StartTime, &channel.ResourceID,
+		&channel.Expiration, &channel.IsStopped)
 
 	if err != nil {
 		return nil, fmt.Errorf("fail to select channel history: %w", err)
@@ -38,10 +39,11 @@ func (r *MysqlRepository) GetChannelHistory(ctx context.Context, t *testing.T,
 
 	err := r.db.QueryRowContext(
 		ctx,
-		"SELECT calendar_id, start_time, resource_id, expiration "+
+		"SELECT calendar_id, start_time, resource_id, expiration, is_stopped "+
 			"FROM channel_histories WHERE calendar_id = ? AND start_time = ?",
 		calendarID, startTime,
-	).Scan(&channel.CalendarID, &channel.StartTime, &channel.ResourceID, &channel.Expiration)
+	).Scan(&channel.CalendarID, &channel.StartTime, &channel.ResourceID,
+		&channel.Expiration, &channel.IsStopped)
 
 	if err != nil {
 		return nil, fmt.Errorf("fail to select channel history: %w", err)
@@ -55,7 +57,7 @@ func (tx *mysqlTransaction) ListActiveChannelHistoriesWithLock(
 
 	rows, err := tx.tx.QueryContext(
 		ctx,
-		"SELECT calendar_id, start_time, resource_id, expiration "+
+		"SELECT calendar_id, start_time, resource_id, expiration, is_stopped "+
 			"FROM channel_histories "+
 			"WHERE calendar_id = ? AND expiration > ? AND is_stopped = FALSE "+
 			"ORDER BY start_time FOR UPDATE",
@@ -73,7 +75,7 @@ func (tx *mysqlTransaction) ListActiveChannelHistoriesWithLock(
 	for rows.Next() {
 		var channel entity.Channel
 		err := rows.Scan(&channel.CalendarID, &channel.StartTime,
-			&channel.ResourceID, &channel.Expiration)
+			&channel.ResourceID, &channel.Expiration, &channel.IsStopped)
 		if err != nil {
 			return nil, fmt.Errorf("fail to scan row: %w", err)
 		}
@@ -109,9 +111,9 @@ func createChannelHistory(ctx context.Context, db database, channel entity.Chann
 	_, err := db.ExecContext(
 		ctx,
 		"INSERT INTO channel_histories "+
-			"(calendar_id, start_time, resource_id, expiration) "+
-			"VALUES (?, ?, ?, ?)",
-		channel.CalendarID, channel.StartTime, channel.ResourceID, channel.Expiration)
+			"(calendar_id, start_time, resource_id, expiration, is_stopped) "+
+			"VALUES (?, ?, ?, ?, ?)",
+		channel.CalendarID, channel.StartTime, channel.ResourceID, channel.Expiration, channel.IsStopped)
 
 	if err != nil {
 		return fmt.Errorf("fail to insert channel history: %w", err)

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/takuoki/golib/applog"
 
@@ -43,6 +44,7 @@ func TestWatchUsecase_StartAll_Success(t *testing.T) {
 				ResourceID: "resource-id",
 				StartTime:  now,
 				Expiration: now.Add(1 * time.Hour),
+				IsStopped:  false,
 			}, nil
 		},
 	}
@@ -88,6 +90,7 @@ func TestWatchUsecase_Start_Success(t *testing.T) {
 				ResourceID: "new-resource-id",
 				StartTime:  now,
 				Expiration: now.Add(1 * time.Hour),
+				IsStopped:  false,
 			}, nil
 		},
 		StopWatchFunc: func(ctx context.Context, channel entity.Channel) error {
@@ -109,6 +112,7 @@ func TestWatchUsecase_Start_Success(t *testing.T) {
 		ResourceID: "active-resource-id",
 		StartTime:  startTime,
 		Expiration: startTime.Add(2 * time.Hour),
+		IsStopped:  false,
 	}
 	require.NoError(t, mysqlRepo.CreateChannelHistory(ctx, t, activeChannel))
 
@@ -118,9 +122,9 @@ func TestWatchUsecase_Start_Success(t *testing.T) {
 
 	// Then
 	// Verify the active channel was stopped
-	_, err = mysqlRepo.GetChannelHistory(ctx, t, calendarID, startTime)
+	oldChannel, err := mysqlRepo.GetChannelHistory(ctx, t, calendarID, startTime)
 	require.NoError(t, err)
-	// assert.Equal(t, false, oldChannel.IsStopped)
+	assert.Equal(t, true, oldChannel.IsStopped)
 
 	// Verify a new channel was created
 	_, err = mysqlRepo.GetLatestChannelHistory(ctx, t, calendarID)

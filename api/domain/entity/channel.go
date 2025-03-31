@@ -11,4 +11,5 @@ type Channel struct {
 	ResourceID valueobject.ResourceID
 	StartTime  time.Time
 	Expiration time.Time
+	IsStopped  bool
 }
