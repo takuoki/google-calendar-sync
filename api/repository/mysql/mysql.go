@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"testing"
 
 	"github.com/takuoki/golib/applog"
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
@@ -110,4 +111,9 @@ type mysqlTransaction struct {
 	clockService service.Clock
 	cryptService service.Crypt
 	logger       applog.Logger
+}
+
+func (r *MysqlRepository) Clock(t *testing.T) service.Clock {
+	t.Helper()
+	return r.clockService
 }
