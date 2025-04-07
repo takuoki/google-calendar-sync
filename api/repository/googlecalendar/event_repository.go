@@ -58,8 +58,9 @@ func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
 	syncToken := ""
 	res := []entity.Event{}
 	for syncToken == "" { // 最後のページまで取得すると必ず値が入る
-
-		// TODO: ctx のキャンセルを確認する
+		if err := ctx.Err(); err != nil {
+			return nil, "", fmt.Errorf("context error: %w", err)
+		}
 
 		var call *calendar.EventsListCall
 		if pageToken == "" {
