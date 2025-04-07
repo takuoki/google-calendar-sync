@@ -33,11 +33,36 @@ func (r *MysqlRepository) GetLatestSyncToken(
 	return syncToken, nil
 }
 
+func (r *MysqlRepository) CreateSyncHistory(ctx context.Context, t *testing.T,
+	calendarID valueobject.CalendarID, syncTime time.Time,
+	nextSyncToken string, updatedEventCount int) error {
+	t.Helper()
+
+	err := createSyncHistory(ctx, r.db, calendarID, syncTime, nextSyncToken, updatedEventCount)
+	if err != nil {
+		return fmt.Errorf("fail to create sync history: %w", err)
+	}
+
+	return nil
+}
+
 func (tx *mysqlTransaction) CreateSyncHistory(
 	ctx context.Context, calendarID valueobject.CalendarID, syncTime time.Time,
 	nextSyncToken string, updatedEventCount int) error {
 
-	_, err := tx.tx.ExecContext(
+	err := createSyncHistory(ctx, tx.tx, calendarID, syncTime, nextSyncToken, updatedEventCount)
+	if err != nil {
+		return fmt.Errorf("fail to create sync history: %w", err)
+	}
+
+	return nil
+}
+
+func createSyncHistory(
+	ctx context.Context, db database, calendarID valueobject.CalendarID, syncTime time.Time,
+	nextSyncToken string, updatedEventCount int) error {
+
+	_, err := db.ExecContext(
 		ctx,
 		"INSERT INTO sync_histories "+
 			"(calendar_id, sync_time, next_sync_token, updated_event_count) "+
@@ -52,12 +77,23 @@ func (tx *mysqlTransaction) CreateSyncHistory(
 }
 
 func (r *MysqlRepository) DeleteAllSyncHistoriesForMain(ctx context.Context, m *testing.M) error {
-	return r.deleteAllSyncHistories(ctx)
+	err := r.deleteAllSyncHistories(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to delete all sync histories: %w", err)
+	}
+
+	return nil
 }
 
 func (r *MysqlRepository) DeleteAllSyncHistories(ctx context.Context, t *testing.T) error {
 	t.Helper()
-	return r.deleteAllSyncHistories(ctx)
+
+	err := r.deleteAllSyncHistories(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to delete all sync histories: %w", err)
+	}
+
+	return nil
 }
 
 func (r *MysqlRepository) deleteAllSyncHistories(ctx context.Context) error {

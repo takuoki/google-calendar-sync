@@ -8,14 +8,14 @@ CREATE TABLE IF NOT EXISTS calendars (
 
 CREATE TABLE IF NOT EXISTS events (
     id VARCHAR(255) NOT NULL,
-    calendar_id VARCHAR(255),
+    calendar_id VARCHAR(255) NOT NULL,
     summary VARCHAR(255) NOT NULL,
     start TIMESTAMP,
     end TIMESTAMP,
     status VARCHAR(255) NOT NULL,
     created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
     updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
-    PRIMARY KEY (id),
+    PRIMARY KEY (calendar_id, id),
     FOREIGN KEY (calendar_id) REFERENCES calendars(id)
 );
 

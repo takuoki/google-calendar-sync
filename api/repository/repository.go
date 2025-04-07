@@ -36,6 +36,7 @@ type DatabaseRepository interface {
 
 type DatabaseTransaction interface {
 	// calendars
+	LockCalendar(ctx context.Context, calendarID valueobject.CalendarID) error
 	CreateCalendar(ctx context.Context, calendar entity.Calendar) error
 
 	// events

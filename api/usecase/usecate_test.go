@@ -9,7 +9,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/takuoki/golib/applog"
+	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/repository/mysql"
 )
@@ -103,4 +105,43 @@ func cleanup(ctx context.Context, t *testing.T) {
 	if err := mysqlRepo.DeleteAllCalendars(ctx, t); err != nil {
 		panic("fail to delete all calendars: " + err.Error())
 	}
+}
+
+func assertEqualTime(t *testing.T, expected, actual *time.Time) bool {
+	t.Helper()
+
+	if expected == nil && actual == nil {
+		return true
+	}
+	if expected == nil || actual == nil {
+		return false
+	}
+
+	// ignore Timezone
+	return expected.UTC().Equal(actual.UTC())
+}
+
+func assertEqualEvent(t *testing.T, expected, actual entity.Event) bool {
+	t.Helper()
+
+	if !assert.Equal(t, expected.ID, actual.ID) {
+		return false
+	}
+	if !assert.Equal(t, expected.CalendarID, actual.CalendarID) {
+		return false
+	}
+	if !assert.Equal(t, expected.Summary, actual.Summary) {
+		return false
+	}
+	if !assertEqualTime(t, expected.Start, actual.Start) {
+		return false
+	}
+	if !assertEqualTime(t, expected.End, actual.End) {
+		return false
+	}
+	if !assert.Equal(t, expected.Status, actual.Status) {
+		return false
+	}
+
+	return true
 }

@@ -87,6 +87,7 @@ func (tx *mysqlTransaction) ListActiveChannelHistoriesWithLock(
 }
 
 func (r *MysqlRepository) CreateChannelHistory(ctx context.Context, t *testing.T, channel entity.Channel) error {
+	t.Helper()
 
 	err := createChannelHistory(ctx, r.db, channel)
 	if err != nil {
@@ -139,12 +140,23 @@ func (tx *mysqlTransaction) StopActiveChannels(
 }
 
 func (r *MysqlRepository) DeleteAllChannelHistoriesForMain(ctx context.Context, m *testing.M) error {
-	return r.deleteAllChannelHistories(ctx)
+	err := r.deleteAllChannelHistories(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to delete all channel histories: %w", err)
+	}
+
+	return nil
 }
 
 func (r *MysqlRepository) DeleteAllChannelHistories(ctx context.Context, t *testing.T) error {
 	t.Helper()
-	return r.deleteAllChannelHistories(ctx)
+
+	err := r.deleteAllChannelHistories(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to delete all channel histories: %w", err)
+	}
+
+	return nil
 }
 
 func (r *MysqlRepository) deleteAllChannelHistories(ctx context.Context) error {

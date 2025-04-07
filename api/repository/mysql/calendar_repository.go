@@ -119,6 +119,18 @@ func (r *MysqlRepository) GetRefreshToken(ctx context.Context, calendarID valueo
 	return *calendar.RefreshToken, nil
 }
 
+func (tx *mysqlTransaction) LockCalendar(ctx context.Context, calendarID valueobject.CalendarID) error {
+
+	_, err := tx.tx.ExecContext(ctx,
+		"SELECT id FROM calendars WHERE id = ? FOR UPDATE",
+		calendarID)
+	if err != nil {
+		return fmt.Errorf("fail to lock calendar: %w", err)
+	}
+
+	return nil
+}
+
 func (r *MysqlRepository) CreateCalendar(ctx context.Context, t *testing.T, calendar entity.Calendar) error {
 	t.Helper()
 
@@ -174,12 +186,23 @@ func createCalendar(ctx context.Context, db database,
 }
 
 func (r *MysqlRepository) DeleteAllCalendarsForMain(ctx context.Context, m *testing.M) error {
-	return r.deleteAllCalendars(ctx)
+	err := r.deleteAllCalendars(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to delete all calendars: %w", err)
+	}
+
+	return nil
 }
 
 func (r *MysqlRepository) DeleteAllCalendars(ctx context.Context, t *testing.T) error {
 	t.Helper()
-	return r.deleteAllCalendars(ctx)
+
+	err := r.deleteAllCalendars(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to delete all calendars: %w", err)
+	}
+
+	return nil
 }
 
 func (r *MysqlRepository) deleteAllCalendars(ctx context.Context) error {
