@@ -6,8 +6,10 @@ import (
 	"time"
 
 	calendar "google.golang.org/api/calendar/v3"
+	"google.golang.org/api/googleapi"
 
 	"github.com/takuoki/golib/applog"
+	"github.com/takuoki/google-calendar-sync/api/domain"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
@@ -68,6 +70,11 @@ func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
 
 		events, err := call.Do()
 		if err != nil {
+			// WARNING: syncToken が古い場合については動作確認未実施
+			// see: https://pkg.go.dev/google.golang.org/api/calendar/v3#EventsListCall.SyncToken
+			if gErr, ok := err.(*googleapi.Error); ok && gErr.Code == 410 {
+				return nil, "", domain.SyncTokenIsOldError
+			}
 			return nil, "", fmt.Errorf("fail to list events: %w", err)
 		}
 

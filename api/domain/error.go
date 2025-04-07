@@ -10,7 +10,7 @@ type ClientError struct {
 	Message string
 }
 
-func NewClientError(code int, message string) *ClientError {
+func newClientError(code int, message string) *ClientError {
 	return &ClientError{
 		Code:    code,
 		Message: message,
@@ -23,14 +23,33 @@ func (e *ClientError) Error() string {
 
 var (
 	RequiredError = func(paramName string) *ClientError {
-		return NewClientError(http.StatusBadRequest, fmt.Sprintf("%s is required", paramName))
+		return newClientError(http.StatusBadRequest, fmt.Sprintf("%s is required", paramName))
 	}
 	NotAllowedError = func(paramName string) *ClientError {
-		return NewClientError(http.StatusBadRequest, fmt.Sprintf("%s is not allowed", paramName))
+		return newClientError(http.StatusBadRequest, fmt.Sprintf("%s is not allowed", paramName))
 	}
 
-	InvalidJSONError          = NewClientError(http.StatusBadRequest, "invalid json")
-	CalendarNotFoundError     = NewClientError(http.StatusNotFound, "calender not found")
-	CalendarAlreadyExistError = NewClientError(http.StatusNotFound, "calender already exists")
-	AllParameterFalseError    = NewClientError(http.StatusBadRequest, "all must be true")
+	InvalidJSONError          = newClientError(http.StatusBadRequest, "invalid json")
+	CalendarNotFoundError     = newClientError(http.StatusNotFound, "calender not found")
+	CalendarAlreadyExistError = newClientError(http.StatusNotFound, "calender already exists")
+	AllParameterFalseError    = newClientError(http.StatusBadRequest, "all must be true")
+)
+
+// InternalHandlingError is an error used for internal handling.
+type InternalHandlingError struct {
+	Message string
+}
+
+func newInternalHandlingError(message string) *InternalHandlingError {
+	return &InternalHandlingError{
+		Message: message,
+	}
+}
+
+func (e *InternalHandlingError) Error() string {
+	return e.Message
+}
+
+var (
+	SyncTokenIsOldError = newInternalHandlingError("sync token is old")
 )

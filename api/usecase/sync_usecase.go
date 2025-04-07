@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/takuoki/golib/applog"
+	"github.com/takuoki/google-calendar-sync/api/domain"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
@@ -50,18 +51,26 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 
 	var events []entity.Event
 	var nextSyncToken string
-	if syncToken == "" {
-		u.logger.Info(ctx, "sync all events")
-
-		oneWeekAgo := u.clockService.Today().Add(7 * -24 * time.Hour)
-		events, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
-	} else {
+	if syncToken != "" {
 		events, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithSyncToken(ctx, calendarID, syncToken)
-
-		// TODO: syncToken が古い場合は、全件取得して更新するようにしたい
-	}
-	if err != nil {
-		return fmt.Errorf("fail to list events: %w", err)
+		if err != nil {
+			if err == domain.SyncTokenIsOldError {
+				// syncToken が古い場合は、全件取得して更新する
+				u.logger.Info(ctx, "sync token is old, sync all events")
+				events, nextSyncToken, err = u.syncAll(ctx, calendarID)
+				if err != nil {
+					return fmt.Errorf("fail to sync all events (sync token is old): %w", err)
+				}
+			} else {
+				return fmt.Errorf("fail to list events: %w", err)
+			}
+		}
+	} else {
+		u.logger.Info(ctx, "sync all events")
+		events, nextSyncToken, err = u.syncAll(ctx, calendarID)
+		if err != nil {
+			return fmt.Errorf("fail to sync all events (sync token doesn't exist): %w", err)
+		}
 	}
 
 	syncTime := u.clockService.Now()
@@ -84,4 +93,15 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	}
 
 	return nil
+}
+
+func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, string, error) {
+	oneWeekAgo := u.clockService.Today().Add(7 * -24 * time.Hour)
+
+	events, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
+	if err != nil {
+		return nil, "", fmt.Errorf("fail to list events: %w", err)
+	}
+
+	return events, nextSyncToken, nil
 }
