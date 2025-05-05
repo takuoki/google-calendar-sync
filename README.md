@@ -30,6 +30,7 @@ google-calendar-sync is a sample application for synchronizing Google Calendar e
 ### For development
 
 - [oapi-codegen](https://github.com/oapi-codegen/oapi-codegen)
+- [golangci-lint](https://golangci-lint.run/)
 - mysql-client etc.
 
 ## Get Started
@@ -139,7 +140,8 @@ sequenceDiagram
     Client->>API: POST /api/watch/sample@sample.com
     activate API
     API->>DB: get calendar
-    API->>DB: stop if exist active channel
+    API->>DB: check if exist active channel
+    API-->>Google Calendar API: stop if exist active channel
     API->>Google Calendar API: watch
     API->>DB: create channel history
     API->>Client: success
