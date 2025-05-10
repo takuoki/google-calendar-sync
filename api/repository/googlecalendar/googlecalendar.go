@@ -112,15 +112,30 @@ func (r *googleCalendarWithOauthRepository) getCalendarService(ctx context.Conte
 	return calendarService, nil
 }
 
-func convertDateTime(datetime *calendar.EventDateTime) (*time.Time, error) {
-	if datetime == nil || datetime.DateTime == "" {
+func convertDateTime(clockService service.Clock, datetime *calendar.EventDateTime) (*time.Time, error) {
+	if datetime == nil {
 		return nil, nil
 	}
-	t, err := time.Parse(time.RFC3339, datetime.DateTime)
-	if err != nil {
-		return nil, fmt.Errorf("fail to parse datetime: %w", err)
+
+	// 終日指定の場合は Date に設定されるため 00:00:00 の日時に変換する
+	if datetime.Date != "" {
+		t, err := clockService.ConvertDate(datetime.Date)
+		if err != nil {
+			return nil, fmt.Errorf("fail to convert date: %w", err)
+		}
+		return &t, nil
 	}
-	return &t, nil
+
+	if datetime.DateTime != "" {
+		t, err := time.Parse(time.RFC3339, datetime.DateTime)
+		if err != nil {
+			return nil, fmt.Errorf("fail to parse datetime: %w", err)
+		}
+		return &t, nil
+	}
+
+	// TODO: ここを通るケースが存在するか確認する（削除データとか？）
+	return nil, nil
 }
 
 func convertUnitTime(t int64) (time.Time, error) {

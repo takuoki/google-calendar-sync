@@ -2,6 +2,7 @@ package googlecalendar
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -17,26 +18,27 @@ import (
 
 func (r *googleCalendarRepository) ListEventsWithAfter(
 	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
+	// TODO: トークン失効を考慮すると、ShowDeleted=trueで呼び出す必要がある
 	call := r.service.Events.List(string(calendarID)).Context(ctx).TimeMin(after.Format(time.RFC3339))
-	return listEvents(ctx, call, calendarID, r.logger)
+	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
 }
 
 func (r *googleCalendarWithOauthRepository) ListEventsWithAfter(
 	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
-
+	// TODO: トークン失効を考慮すると、ShowDeleted=trueで呼び出す必要がある
 	service, err := r.getCalendarService(ctx, calendarID)
 	if err != nil {
 		return nil, "", fmt.Errorf("fail to get calendar service: %w", err)
 	}
 
 	call := service.Events.List(string(calendarID)).Context(ctx).TimeMin(after.Format(time.RFC3339))
-	return listEvents(ctx, call, calendarID, r.logger)
+	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
 }
 
 func (r *googleCalendarRepository) ListEventsWithSyncToken(
 	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
 	call := r.service.Events.List(string(calendarID)).Context(ctx).SyncToken(syncToken)
-	return listEvents(ctx, call, calendarID, r.logger)
+	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
 }
 
 func (r *googleCalendarWithOauthRepository) ListEventsWithSyncToken(
@@ -48,11 +50,12 @@ func (r *googleCalendarWithOauthRepository) ListEventsWithSyncToken(
 	}
 
 	call := service.Events.List(string(calendarID)).Context(ctx).SyncToken(syncToken)
-	return listEvents(ctx, call, calendarID, r.logger)
+	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
 }
 
+// TODO: EventsListCall だけでなく、EventsInstancesCall も受け取れるようにする
 func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
-	calendarID valueobject.CalendarID, logger applog.Logger) ([]entity.Event, string, error) {
+	calendarID valueobject.CalendarID, clockService service.Clock, logger applog.Logger) ([]entity.Event, string, error) {
 
 	pageToken := ""
 	syncToken := ""
@@ -81,11 +84,18 @@ func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
 
 		for _, item := range events.Items {
 
-			start, err := convertDateTime(item.Start)
+			// TODO: この Debug ログは最終的には削除する（ログの量が多いため）
+			itemJSON, err := json.Marshal(item)
+			if err != nil {
+				return nil, "", fmt.Errorf("fail to marshal event item to JSON: %w", err)
+			}
+			logger.Debugf(ctx, "event detail: %s", string(itemJSON))
+
+			start, err := convertDateTime(clockService, item.Start)
 			if err != nil {
 				return nil, "", fmt.Errorf("fail to convert start datetime: %w", err)
 			}
-			end, err := convertDateTime(item.End)
+			end, err := convertDateTime(clockService, item.End)
 			if err != nil {
 				return nil, "", fmt.Errorf("fail to convert end datetime: %w", err)
 			}
