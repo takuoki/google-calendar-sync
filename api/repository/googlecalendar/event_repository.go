@@ -91,11 +91,11 @@ func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
 			}
 			logger.Debugf(ctx, "event detail: %s", string(itemJSON))
 
-			start, err := convertDateTime(clockService, item.Start)
+			start, err := convertDateTime(item.Start, events.TimeZone)
 			if err != nil {
 				return nil, "", fmt.Errorf("fail to convert start datetime: %w", err)
 			}
-			end, err := convertDateTime(clockService, item.End)
+			end, err := convertDateTime(item.End, events.TimeZone)
 			if err != nil {
 				return nil, "", fmt.Errorf("fail to convert end datetime: %w", err)
 			}

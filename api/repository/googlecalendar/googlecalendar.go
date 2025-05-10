@@ -112,17 +112,25 @@ func (r *googleCalendarWithOauthRepository) getCalendarService(ctx context.Conte
 	return calendarService, nil
 }
 
-func convertDateTime(clockService service.Clock, datetime *calendar.EventDateTime) (*time.Time, error) {
+func convertDateTime(datetime *calendar.EventDateTime, location string) (*time.Time, error) {
 	if datetime == nil {
 		return nil, nil
 	}
 
 	// 終日指定の場合は Date に設定されるため 00:00:00 の日時に変換する
+	// タイムゾーンはカレンダーのタイムゾーンを使用する
 	if datetime.Date != "" {
-		t, err := clockService.ConvertDate(datetime.Date)
+
+		loc, err := time.LoadLocation(location)
 		if err != nil {
-			return nil, fmt.Errorf("fail to convert date: %w", err)
+			return nil, fmt.Errorf("fail to load location: %w", err)
 		}
+
+		t, err := time.ParseInLocation("2006-01-02", datetime.Date, loc)
+		if err != nil {
+			return nil, fmt.Errorf("fail to parse date: %w", err)
+		}
+
 		return &t, nil
 	}
 

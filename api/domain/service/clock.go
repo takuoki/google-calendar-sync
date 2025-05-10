@@ -8,7 +8,6 @@ import (
 type Clock interface {
 	Now() time.Time
 	Today() time.Time
-	ConvertDate(date string) (time.Time, error)
 }
 
 type SystemClock struct {
@@ -34,10 +33,6 @@ func (c *SystemClock) Today() time.Time {
 	return c.Now().Truncate(24 * time.Hour)
 }
 
-func (c *SystemClock) ConvertDate(date string) (time.Time, error) {
-	return convertDate(date, c.location)
-}
-
 type MockClock struct {
 	fixedTime time.Time
 }
@@ -58,16 +53,4 @@ func (c *MockClock) Now() time.Time {
 
 func (c *MockClock) Today() time.Time {
 	return c.fixedTime.Truncate(24 * time.Hour)
-}
-
-func (c *MockClock) ConvertDate(date string) (time.Time, error) {
-	return convertDate(date, time.UTC)
-}
-
-func convertDate(date string, loc *time.Location) (time.Time, error) {
-	t, err := time.ParseInLocation("2006-01-02", date, loc)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("fail to parse date: %w", err)
-	}
-	return t, nil
 }
