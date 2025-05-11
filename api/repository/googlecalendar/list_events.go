@@ -46,14 +46,15 @@ func (w *eventsInstancesCallWrapper) PageToken(token string) listEventCall {
 }
 
 func listEvents(ctx context.Context, clockService service.Clock, logger applog.Logger,
-	baseCall listEventCall, calendarID valueobject.CalendarID) ([]entity.Event, string, error) {
+	baseCall listEventCall, calendarID valueobject.CalendarID) ([]entity.Event, []entity.RecurringEvent, string, error) {
 
 	pageToken := ""
 	syncToken := ""
-	res := []entity.Event{}
+	resEvents := []entity.Event{}
+	recurringEvents := []entity.RecurringEvent{}
 	for syncToken == "" { // 最後のページまで取得すると必ず値が入る
 		if err := ctx.Err(); err != nil {
-			return nil, "", fmt.Errorf("context error: %w", err)
+			return nil, nil, "", fmt.Errorf("context error: %w", err)
 		}
 
 		var call listEventCall
@@ -68,9 +69,9 @@ func listEvents(ctx context.Context, clockService service.Clock, logger applog.L
 			// WARNING: syncToken が古い場合については動作確認未実施
 			// see: https://pkg.go.dev/google.golang.org/api/calendar/v3#EventsListCall.SyncToken
 			if gErr, ok := err.(*googleapi.Error); ok && gErr.Code == 410 {
-				return nil, "", domain.SyncTokenIsOldError
+				return nil, nil, "", domain.SyncTokenIsOldError
 			}
-			return nil, "", fmt.Errorf("fail to list events: %w", err)
+			return nil, nil, "", fmt.Errorf("fail to list events: %w", err)
 		}
 
 		for _, item := range events.Items {
@@ -78,27 +79,45 @@ func listEvents(ctx context.Context, clockService service.Clock, logger applog.L
 			// TODO: この Debug ログは最終的には削除する（ログの量が多いため）
 			itemJSON, err := json.Marshal(item)
 			if err != nil {
-				return nil, "", fmt.Errorf("fail to marshal event item to JSON: %w", err)
+				return nil, nil, "", fmt.Errorf("fail to marshal event item to JSON: %w", err)
 			}
 			logger.Debugf(ctx, "event detail: %s", string(itemJSON))
 
 			start, err := convertDateTime(item.Start, events.TimeZone)
 			if err != nil {
-				return nil, "", fmt.Errorf("fail to convert start datetime: %w", err)
+				return nil, nil, "", fmt.Errorf("fail to convert start datetime: %w", err)
 			}
 			end, err := convertDateTime(item.End, events.TimeZone)
 			if err != nil {
-				return nil, "", fmt.Errorf("fail to convert end datetime: %w", err)
+				return nil, nil, "", fmt.Errorf("fail to convert end datetime: %w", err)
 			}
 
-			res = append(res, entity.Event{
-				ID:         valueobject.EventID(item.Id),
-				CalendarID: calendarID,
-				Summary:    item.Summary,
-				Start:      start,
-				End:        end,
-				Status:     item.Status,
-			})
+			if len(item.Recurrence) == 0 {
+				resEvents = append(resEvents, entity.Event{
+					ID:               valueobject.EventID(item.Id),
+					CalendarID:       calendarID,
+					RecurringEventID: valueobject.NewEventID(item.RecurringEventId),
+					Summary:          item.Summary,
+					Start:            start,
+					End:              end,
+					Status:           item.Status,
+				})
+			} else {
+				recurrenceStr, err := json.Marshal(item.Recurrence)
+				if err != nil {
+					return nil, nil, "", fmt.Errorf("fail to marshal recurrence: %w", err)
+				}
+
+				recurringEvents = append(recurringEvents, entity.RecurringEvent{
+					ID:         valueobject.EventID(item.Id),
+					CalendarID: calendarID,
+					Summary:    item.Summary,
+					Recurrence: string(recurrenceStr),
+					Start:      start,
+					End:        end,
+					Status:     item.Status,
+				})
+			}
 		}
 
 		pageToken = events.NextPageToken
@@ -107,5 +126,5 @@ func listEvents(ctx context.Context, clockService service.Clock, logger applog.L
 		logger.Debugf(ctx, "list events: pageToken=%q, syncToken=%q", pageToken, syncToken)
 	}
 
-	return res, syncToken, nil
+	return resEvents, recurringEvents, syncToken, nil
 }

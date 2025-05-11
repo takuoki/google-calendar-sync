@@ -52,7 +52,8 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	var events []entity.Event
 	var nextSyncToken string
 	if syncToken != "" {
-		events, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithSyncToken(ctx, calendarID, syncToken)
+		// TODO: 定期的な予定の実装は未実施
+		events, _, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithSyncToken(ctx, calendarID, syncToken)
 		if err != nil {
 			if err == domain.SyncTokenIsOldError {
 				// syncToken が古い場合は、全件取得して更新する
@@ -98,7 +99,8 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, string, error) {
 	oneWeekAgo := u.clockService.Today().Add(7 * -24 * time.Hour)
 
-	events, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
+	// TODO: 定期的な予定の実装は未実施
+	events, _, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
 	if err != nil {
 		return nil, "", fmt.Errorf("fail to list events: %w", err)
 	}

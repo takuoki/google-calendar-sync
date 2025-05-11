@@ -11,10 +11,10 @@ import (
 type GoogleCalendarRepository interface {
 	// events
 	ListEventsWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
-		events []entity.Event, nextSyncToken string, err error)
+		events []entity.Event, recurringEvents []entity.RecurringEvent, nextSyncToken string, err error)
 
 	ListEventsWithSyncToken(ctx context.Context, calendarID valueobject.CalendarID, syncToken string) (
-		events []entity.Event, nextSyncToken string, err error)
+		events []entity.Event, recurringEvents []entity.RecurringEvent, nextSyncToken string, err error)
 
 	ListEventInstances(ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID) (
 		[]entity.Event, error)
@@ -33,6 +33,9 @@ type DatabaseRepository interface {
 	ListCalendars(ctx context.Context) ([]entity.Calendar, error)
 	GetRefreshToken(ctx context.Context, calendarID valueobject.CalendarID) (string, error)
 
+	// recurring_events
+	// ListRecurringEvents(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.RecurringEvent, error)
+
 	// sync_histories
 	GetLatestSyncToken(ctx context.Context, calendarID valueobject.CalendarID) (syncToken string, err error)
 }
@@ -44,6 +47,7 @@ type DatabaseTransaction interface {
 
 	// events
 	SyncEvents(ctx context.Context, events []entity.Event) (updatedCount int, err error)
+	// SyncRecurringEvents(ctx context.Context, recurringEvent entity.RecurringEvent, events []entity.Event) (updatedCount int, err error)
 
 	// channel_histories
 	ListActiveChannelHistoriesWithLock(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Channel, error)

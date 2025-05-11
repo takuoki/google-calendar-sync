@@ -14,16 +14,16 @@ import (
 )
 
 func (r *googleCalendarRepository) ListEventsWithAfter(
-	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
+	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
 	return listEventsWithAfter(ctx, r.service, r.clockService, r.logger, calendarID, after)
 }
 
 func (r *googleCalendarWithOauthRepository) ListEventsWithAfter(
-	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
+	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
 
 	service, err := r.getCalendarService(ctx, calendarID)
 	if err != nil {
-		return nil, "", fmt.Errorf("fail to get calendar service: %w", err)
+		return nil, nil, "", fmt.Errorf("fail to get calendar service: %w", err)
 	}
 
 	return listEventsWithAfter(ctx, service, r.clockService, r.logger, calendarID, after)
@@ -31,7 +31,7 @@ func (r *googleCalendarWithOauthRepository) ListEventsWithAfter(
 
 func listEventsWithAfter(
 	ctx context.Context, service *calendar.Service, clockService service.Clock, logger applog.Logger,
-	calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
+	calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
 
 	call := &eventsListCallWrapper{
 		call: service.Events.List(string(calendarID)).Context(ctx).
@@ -43,23 +43,23 @@ func listEventsWithAfter(
 }
 
 func (r *googleCalendarRepository) ListEventsWithSyncToken(
-	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
+	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
 	return listEventsWithSyncToken(ctx, r.service, r.clockService, r.logger, calendarID, syncToken)
 }
 
 func (r *googleCalendarWithOauthRepository) ListEventsWithSyncToken(
-	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
+	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
 
 	service, err := r.getCalendarService(ctx, calendarID)
 	if err != nil {
-		return nil, "", fmt.Errorf("fail to get calendar service: %w", err)
+		return nil, nil, "", fmt.Errorf("fail to get calendar service: %w", err)
 	}
 
 	return listEventsWithSyncToken(ctx, service, r.clockService, r.logger, calendarID, syncToken)
 }
 
 func listEventsWithSyncToken(ctx context.Context, service *calendar.Service, clockService service.Clock, logger applog.Logger,
-	calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
+	calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
 
 	call := &eventsListCallWrapper{
 		call: service.Events.List(string(calendarID)).Context(ctx).
@@ -96,7 +96,17 @@ func listEventInstances(ctx context.Context, service *calendar.Service, clockSer
 	}
 
 	// 子イベント取得時は差分取得ではないため、syncToken は不要
-	events, _, err := listEvents(ctx, clockService, logger, call, calendarID)
+	events, recurringEvents, _, err := listEvents(ctx, clockService, logger, call, calendarID)
+
+	if len(recurringEvents) > 0 {
+		// 子イベント取得時には定期的なイベントは取得されない想定のため、ログ出力のみ実施して返さない
+		recurringEventIDs := make([]string, 0, len(recurringEvents))
+		for _, recurringEvent := range recurringEvents {
+			recurringEventIDs = append(recurringEventIDs, string(recurringEvent.ID))
+		}
+
+		logger.Warnf(ctx, "recurring events are found when listing event instances (eventID: %s, recurringEventIDs: %v)", eventID, recurringEventIDs)
+	}
 
 	return events, err
 }

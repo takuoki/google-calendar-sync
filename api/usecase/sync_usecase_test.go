@@ -63,8 +63,8 @@ func TestSyncUsecase_Sync_Success_AllEvents(t *testing.T) {
 
 	mockRepo := &GoogleCalendarRepositoryMock{
 		ListEventsWithAfterFunc: func(ctx context.Context,
-			calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
-			return []entity.Event{event1, event2}, "new-sync-token", nil
+			calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
+			return []entity.Event{event1, event2}, []entity.RecurringEvent{}, "new-sync-token", nil
 		},
 	}
 
@@ -129,9 +129,9 @@ func TestSyncUsecase_Sync_Success_WithSyncToken(t *testing.T) {
 
 	mockRepo := &GoogleCalendarRepositoryMock{
 		ListEventsWithSyncTokenFunc: func(ctx context.Context,
-			calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
+			calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
 			assert.Equal(t, "sync-token", syncToken)
-			return []entity.Event{event1, event2}, "new-sync-token", nil
+			return []entity.Event{event1, event2}, []entity.RecurringEvent{}, "new-sync-token", nil
 		},
 	}
 
@@ -207,12 +207,12 @@ func TestSyncUsecase_Sync_Success_OldSyncToken(t *testing.T) {
 
 	mockRepo := &GoogleCalendarRepositoryMock{
 		ListEventsWithSyncTokenFunc: func(ctx context.Context,
-			calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
-			return nil, "", domain.SyncTokenIsOldError
+			calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
+			return nil, nil, "", domain.SyncTokenIsOldError
 		},
 		ListEventsWithAfterFunc: func(ctx context.Context,
-			calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
-			return []entity.Event{event1, event2}, "new-sync-token", nil
+			calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
+			return []entity.Event{event1, event2}, []entity.RecurringEvent{}, "new-sync-token", nil
 		},
 	}
 
