@@ -69,30 +69,32 @@ func listEventsWithSyncToken(ctx context.Context, service *calendar.Service, clo
 	return listEvents(ctx, clockService, logger, call, calendarID)
 }
 
-func (r *googleCalendarRepository) ListEventInstances(
-	ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID) ([]entity.Event, error) {
-	return listEventInstances(ctx, r.service, r.clockService, r.logger, calendarID, eventID)
+func (r *googleCalendarRepository) ListEventInstancesBetween(
+	ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID, from, to time.Time) ([]entity.Event, error) {
+	return listEventInstancesBetween(ctx, r.service, r.clockService, r.logger, calendarID, eventID, from, to)
 }
 
-func (r *googleCalendarWithOauthRepository) ListEventInstances(
-	ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID) ([]entity.Event, error) {
+func (r *googleCalendarWithOauthRepository) ListEventInstancesBetween(
+	ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID, from, to time.Time) ([]entity.Event, error) {
 
 	service, err := r.getCalendarService(ctx, calendarID)
 	if err != nil {
 		return nil, fmt.Errorf("fail to get calendar service: %w", err)
 	}
 
-	return listEventInstances(ctx, service, r.clockService, r.logger, calendarID, eventID)
+	return listEventInstancesBetween(ctx, service, r.clockService, r.logger, calendarID, eventID, from, to)
 }
 
-func listEventInstances(ctx context.Context, service *calendar.Service, clockService service.Clock, logger applog.Logger,
-	calendarID valueobject.CalendarID, eventID valueobject.EventID) ([]entity.Event, error) {
+func listEventInstancesBetween(ctx context.Context, service *calendar.Service, clockService service.Clock, logger applog.Logger,
+	calendarID valueobject.CalendarID, eventID valueobject.EventID, from, to time.Time) ([]entity.Event, error) {
 
 	call := &eventsInstancesCallWrapper{
 		call: service.Events.Instances(string(calendarID), string(eventID)).Context(ctx).
 			// 個別イベント化されていない子イベントを更新する場合は、全削除＆全登録のため、削除されたものは取得不要
 			// 個別イベント化されたイベントは、通常の listEvents で差分取得されるため、ここでは考慮不要
-			ShowDeleted(false),
+			ShowDeleted(false).
+			TimeMin(from.Format(time.RFC3339)).
+			TimeMax(to.Format(time.RFC3339)),
 	}
 
 	// 子イベント取得時は差分取得ではないため、syncToken は不要
