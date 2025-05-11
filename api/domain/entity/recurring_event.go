@@ -6,17 +6,17 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
-type Event struct {
-	ID               valueobject.EventID
-	CalendarID       valueobject.CalendarID
-	RecurringEventID *valueobject.EventID
-	Summary          string
-	Start            *time.Time
-	End              *time.Time
-	Status           string
+type RecurringEvent struct {
+	ID         valueobject.EventID
+	CalendarID valueobject.CalendarID
+	Summary    string
+	Recurrence string
+	Start      *time.Time
+	End        *time.Time
+	Status     string
 }
 
-func (e *Event) Equals(other *Event) bool {
+func (e *RecurringEvent) Equals(other *RecurringEvent) bool {
 	if e == nil && other == nil {
 		return true
 	}
@@ -26,8 +26,8 @@ func (e *Event) Equals(other *Event) bool {
 
 	return e.ID == other.ID &&
 		e.CalendarID == other.CalendarID &&
-		comparePointer(e.RecurringEventID, other.RecurringEventID) &&
 		e.Summary == other.Summary &&
+		e.Recurrence == other.Recurrence &&
 		compareTime(e.Start, other.Start) &&
 		compareTime(e.End, other.End) &&
 		e.Status == other.Status
