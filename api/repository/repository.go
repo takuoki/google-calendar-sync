@@ -16,6 +16,9 @@ type GoogleCalendarRepository interface {
 	ListEventsWithSyncToken(ctx context.Context, calendarID valueobject.CalendarID, syncToken string) (
 		events []entity.Event, nextSyncToken string, err error)
 
+	ListEventInstances(ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID) (
+		[]entity.Event, error)
+
 	Watch(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error)
 
 	// channels
