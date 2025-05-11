@@ -33,7 +33,7 @@ func TestEvent_Equals(t *testing.T) {
 			event1: &entity.Event{
 				ID:               valueobject.EventID("1"),
 				CalendarID:       valueobject.CalendarID("cal1"),
-				RecurringEventID: pointer(valueobject.EventID("r1")),
+				RecurringEventID: valueobject.NewEventID("r1"),
 				Summary:          "Meeting",
 				Start:            &now,
 				End:              &otherTime,
@@ -42,7 +42,7 @@ func TestEvent_Equals(t *testing.T) {
 			event2: &entity.Event{
 				ID:               valueobject.EventID("1"),
 				CalendarID:       valueobject.CalendarID("cal1"),
-				RecurringEventID: pointer(valueobject.EventID("r1")),
+				RecurringEventID: valueobject.NewEventID("r1"),
 				Summary:          "Meeting",
 				Start:            &now,
 				End:              &otherTime,
@@ -92,7 +92,7 @@ func TestEvent_Equals(t *testing.T) {
 			event1: &entity.Event{
 				ID:               valueobject.EventID("1"),
 				CalendarID:       valueobject.CalendarID("cal1"),
-				RecurringEventID: pointer(valueobject.EventID("r1")),
+				RecurringEventID: valueobject.NewEventID("r1"),
 				Summary:          "Meeting",
 				Start:            &now,
 				End:              &otherTime,
@@ -101,7 +101,7 @@ func TestEvent_Equals(t *testing.T) {
 			event2: &entity.Event{
 				ID:               valueobject.EventID("1"),
 				CalendarID:       valueobject.CalendarID("cal2"),
-				RecurringEventID: pointer(valueobject.EventID("r2")),
+				RecurringEventID: valueobject.NewEventID("r2"),
 				Summary:          "Meeting",
 				Start:            &now,
 				End:              &otherTime,
@@ -197,8 +197,4 @@ func TestEvent_Equals(t *testing.T) {
 			}
 		})
 	}
-}
-
-func pointer[T any](v T) *T {
-	return &v
 }
