@@ -13,6 +13,12 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/repository"
 )
 
+const (
+	syncEventFrom         = -1 * 7 * 24 * time.Hour // 1 週間前
+	syncEventInstanceFrom = syncEventFrom
+	syncEventInstanceTo   = 365 * 24 * time.Hour // 1 年後
+)
+
 type SyncUsecase interface {
 	Sync(ctx context.Context, calendarID valueobject.CalendarID) error
 }
@@ -50,15 +56,15 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	}
 
 	var events []entity.Event
+	var recurringEvents []entity.RecurringEvent
 	var nextSyncToken string
 	if syncToken != "" {
-		// TODO: 定期的な予定の実装は未実施
-		events, _, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithSyncToken(ctx, calendarID, syncToken)
+		events, recurringEvents, nextSyncToken, err = u.googleCalenderRepo.ListEventsWithSyncToken(ctx, calendarID, syncToken)
 		if err != nil {
 			if err == domain.SyncTokenIsOldError {
 				// syncToken が古い場合は、全件取得して更新する
 				u.logger.Info(ctx, "sync token is old, sync all events")
-				events, nextSyncToken, err = u.syncAll(ctx, calendarID)
+				events, recurringEvents, nextSyncToken, err = u.syncAll(ctx, calendarID)
 				if err != nil {
 					return fmt.Errorf("fail to sync all events (sync token is old): %w", err)
 				}
@@ -68,13 +74,40 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 		}
 	} else {
 		u.logger.Info(ctx, "sync all events")
-		events, nextSyncToken, err = u.syncAll(ctx, calendarID)
+		events, recurringEvents, nextSyncToken, err = u.syncAll(ctx, calendarID)
 		if err != nil {
 			return fmt.Errorf("fail to sync all events (sync token doesn't exist): %w", err)
 		}
 	}
 
 	syncTime := u.clockService.Now()
+
+	shouldSaveRecurringEvents := make([]entity.RecurringEvent, 0, len(recurringEvents))
+	recurringEventInstanceMap := map[valueobject.EventID][]entity.Event{}
+	if len(recurringEvents) > 0 {
+		recurringEventMap, err := u.fetchRecurringEventMap(ctx, calendarID)
+		if err != nil {
+			return fmt.Errorf("fail to fetch recurring event map: %w", err)
+		}
+
+		for _, recurringEvent := range recurringEvents {
+			recurringEvent, ok := recurringEventMap[recurringEvent.ID]
+			if ok && recurringEvent.Equals(&recurringEvent) {
+				// 既存の定期イベントと同じ場合はスキップ
+				continue
+			}
+
+			// TODO: 削除された recurringEvent の場合は API 呼び出し不要かもしれない
+			instances, err := u.googleCalenderRepo.ListEventInstancesBetween(
+				ctx, calendarID, recurringEvent.ID, syncTime.Add(syncEventInstanceFrom), syncTime.Add(syncEventInstanceTo))
+			if err != nil {
+				return fmt.Errorf("fail to list event instances: %w", err)
+			}
+
+			shouldSaveRecurringEvents = append(shouldSaveRecurringEvents, recurringEvent)
+			recurringEventInstanceMap[recurringEvent.ID] = instances
+		}
+	}
 
 	err = u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
 
@@ -85,6 +118,16 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 		updatedEventCount, err := tx.SyncEvents(ctx, calendarID, events)
 		if err != nil {
 			return fmt.Errorf("fail to sync events: %w", err)
+		}
+
+		for _, recurringEvent := range shouldSaveRecurringEvents {
+			instances := recurringEventInstanceMap[recurringEvent.ID]
+			updatedCount, err := tx.SyncRecurringEvents(ctx, recurringEvent, instances)
+			if err != nil {
+				return fmt.Errorf("fail to sync recurring events: %w", err)
+			}
+
+			updatedEventCount += updatedCount
 		}
 
 		if err := tx.CreateSyncHistory(ctx, calendarID, syncTime, nextSyncToken, updatedEventCount); err != nil {
@@ -101,14 +144,29 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	return nil
 }
 
-func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, string, error) {
-	oneWeekAgo := u.clockService.Today().Add(7 * -24 * time.Hour)
+func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, []entity.RecurringEvent, string, error) {
+	oneWeekAgo := u.clockService.Today().Add(syncEventFrom)
 
-	// TODO: 定期的な予定の実装は未実施
-	events, _, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
+	events, recurringEvents, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
 	if err != nil {
-		return nil, "", fmt.Errorf("fail to list events: %w", err)
+		return nil, nil, "", fmt.Errorf("fail to list events: %w", err)
 	}
 
-	return events, nextSyncToken, nil
+	return events, recurringEvents, nextSyncToken, nil
+}
+
+func (u *syncUsecase) fetchRecurringEventMap(ctx context.Context, calendarID valueobject.CalendarID) (
+	map[valueobject.EventID]entity.RecurringEvent, error) {
+
+	recurringEvents, err := u.databaseRepo.ListRecurringEvents(ctx, calendarID)
+	if err != nil {
+		return nil, fmt.Errorf("fail to list recurring events: %w", err)
+	}
+
+	recurringEventMap := map[valueobject.EventID]entity.RecurringEvent{}
+	for _, recurringEvent := range recurringEvents {
+		recurringEventMap[recurringEvent.ID] = recurringEvent
+	}
+
+	return recurringEventMap, nil
 }

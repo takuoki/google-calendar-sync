@@ -34,7 +34,7 @@ type DatabaseRepository interface {
 	GetRefreshToken(ctx context.Context, calendarID valueobject.CalendarID) (string, error)
 
 	// recurring_events
-	// ListRecurringEvents(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.RecurringEvent, error)
+	ListRecurringEvents(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.RecurringEvent, error)
 
 	// sync_histories
 	GetLatestSyncToken(ctx context.Context, calendarID valueobject.CalendarID) (syncToken string, err error)
@@ -45,9 +45,11 @@ type DatabaseTransaction interface {
 	LockCalendar(ctx context.Context, calendarID valueobject.CalendarID) error
 	CreateCalendar(ctx context.Context, calendar entity.Calendar) error
 
+	// recurring_events
+	SyncRecurringEvents(ctx context.Context, recurringEvent entity.RecurringEvent, events []entity.Event) (updatedCount int, err error)
+
 	// events
 	SyncEvents(ctx context.Context, calendarID valueobject.CalendarID, events []entity.Event) (updatedCount int, err error)
-	// SyncRecurringEvents(ctx context.Context, recurringEvent entity.RecurringEvent, events []entity.Event) (updatedCount int, err error)
 
 	// channel_histories
 	ListActiveChannelHistoriesWithLock(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Channel, error)
