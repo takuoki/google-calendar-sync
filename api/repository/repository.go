@@ -46,7 +46,7 @@ type DatabaseTransaction interface {
 	CreateCalendar(ctx context.Context, calendar entity.Calendar) error
 
 	// events
-	SyncEvents(ctx context.Context, events []entity.Event) (updatedCount int, err error)
+	SyncEvents(ctx context.Context, calendarID valueobject.CalendarID, events []entity.Event) (updatedCount int, err error)
 	// SyncRecurringEvents(ctx context.Context, recurringEvent entity.RecurringEvent, events []entity.Event) (updatedCount int, err error)
 
 	// channel_histories

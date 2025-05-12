@@ -61,9 +61,9 @@ func (r *MysqlRepository) CreateEvent(ctx context.Context, t *testing.T,
 func createEvent(ctx context.Context, db database, event entity.Event) error {
 	_, err := db.ExecContext(ctx,
 		"INSERT INTO events "+
-			"(id, calendar_id, summary, start, end, status) "+
-			"VALUES (?, ?, ?, ?, ?, ?)",
-		event.ID, event.CalendarID, event.Summary, event.Start, event.End, event.Status)
+			"(id, calendar_id, recurring_event_id, summary, start, end, status) "+
+			"VALUES (?, ?, ?, ?, ?, ?, ?)",
+		event.ID, event.CalendarID, event.RecurringEventID, event.Summary, event.Start, event.End, event.Status)
 	if err != nil {
 		return fmt.Errorf("fail to insert event: %w", err)
 	}
@@ -71,23 +71,18 @@ func createEvent(ctx context.Context, db database, event entity.Event) error {
 	return nil
 }
 
-func (tx *mysqlTransaction) SyncEvents(ctx context.Context, events []entity.Event) (int, error) {
+func (tx *mysqlTransaction) SyncEvents(ctx context.Context, calendarID valueobject.CalendarID, events []entity.Event) (int, error) {
 
 	if len(events) == 0 {
 		return 0, nil
 	}
 
-	calendarID := events[0].CalendarID
 	eventIDs := make([]valueobject.EventID, 0, len(events))
 	for _, event := range events {
 		if event.CalendarID != calendarID {
-			return 0, fmt.Errorf("all events must have the same calendar ID")
+			return 0, fmt.Errorf("all events must have the same calendar ID: expected %s, got %s", calendarID, event.CalendarID)
 		}
 		eventIDs = append(eventIDs, event.ID)
-	}
-
-	if err := tx.LockCalendar(ctx, calendarID); err != nil {
-		return 0, fmt.Errorf("fail to lock calendar: %w", err)
 	}
 
 	dbEventMap, err := tx.fetchEventMap(ctx, calendarID, eventIDs)
@@ -144,7 +139,7 @@ func (tx *mysqlTransaction) fetchEventMap(ctx context.Context,
 	}
 
 	query := fmt.Sprintf(
-		"SELECT id, calendar_id, summary, start, end, status "+
+		"SELECT id, calendar_id, recurring_event_id, summary, start, end, status "+
 			"FROM events WHERE calendar_id = ? AND id IN (%s)",
 		strings.Join(placeholders, ", "),
 	)
@@ -165,6 +160,7 @@ func (tx *mysqlTransaction) fetchEventMap(ctx context.Context,
 		err := rows.Scan(
 			&event.ID,
 			&event.CalendarID,
+			&event.RecurringEventID,
 			&event.Summary,
 			&event.Start,
 			&event.End,
@@ -181,9 +177,9 @@ func (tx *mysqlTransaction) fetchEventMap(ctx context.Context,
 
 func (tx *mysqlTransaction) updateEvent(ctx context.Context, event entity.Event) error {
 	_, err := tx.tx.ExecContext(ctx,
-		"UPDATE events SET summary = ?, start = ?, end = ?, status = ? "+
+		"UPDATE events SET recurring_event_id = ?, summary = ?, start = ?, end = ?, status = ? "+
 			"WHERE id = ? AND calendar_id = ?",
-		event.Summary, event.Start, event.End, event.Status, event.ID, event.CalendarID)
+		event.RecurringEventID, event.Summary, event.Start, event.End, event.Status, event.ID, event.CalendarID)
 	if err != nil {
 		return fmt.Errorf("fail to update event: %w", err)
 	}

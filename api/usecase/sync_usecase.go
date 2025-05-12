@@ -77,7 +77,12 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	syncTime := u.clockService.Now()
 
 	err = u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
-		updatedEventCount, err := tx.SyncEvents(ctx, events)
+
+		if err := tx.LockCalendar(ctx, calendarID); err != nil {
+			return fmt.Errorf("fail to lock calendar: %w", err)
+		}
+
+		updatedEventCount, err := tx.SyncEvents(ctx, calendarID, events)
 		if err != nil {
 			return fmt.Errorf("fail to sync events: %w", err)
 		}
