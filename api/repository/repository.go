@@ -34,7 +34,7 @@ type DatabaseRepository interface {
 	GetRefreshToken(ctx context.Context, calendarID valueobject.CalendarID) (string, error)
 
 	// recurring_events
-	ListRecurringEvents(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.RecurringEvent, error)
+	ListActiveRecurringEvents(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.RecurringEvent, error)
 
 	// sync_histories
 	GetLatestSyncToken(ctx context.Context, calendarID valueobject.CalendarID) (syncToken string, err error)

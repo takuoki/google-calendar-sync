@@ -158,7 +158,7 @@ func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.Calend
 func (u *syncUsecase) fetchRecurringEventMap(ctx context.Context, calendarID valueobject.CalendarID) (
 	map[valueobject.EventID]entity.RecurringEvent, error) {
 
-	recurringEvents, err := u.databaseRepo.ListRecurringEvents(ctx, calendarID)
+	recurringEvents, err := u.databaseRepo.ListActiveRecurringEvents(ctx, calendarID)
 	if err != nil {
 		return nil, fmt.Errorf("fail to list recurring events: %w", err)
 	}
