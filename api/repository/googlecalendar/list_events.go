@@ -76,13 +76,6 @@ func listEvents(ctx context.Context, clockService service.Clock, logger applog.L
 
 		for _, item := range events.Items {
 
-			// TODO: この Debug ログは最終的には削除する（ログの量が多いため）
-			itemJSON, err := json.Marshal(item)
-			if err != nil {
-				return nil, nil, "", fmt.Errorf("fail to marshal event item to JSON: %w", err)
-			}
-			logger.Debugf(ctx, "event detail: %s", string(itemJSON))
-
 			start, err := convertDateTime(item.Start, events.TimeZone)
 			if err != nil {
 				return nil, nil, "", fmt.Errorf("fail to convert start datetime: %w", err)
