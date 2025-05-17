@@ -11,10 +11,11 @@ import (
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
-func (r *MysqlRepository) ListActiveRecurringEvents(ctx context.Context, calendarID valueobject.CalendarID) (
+func (r *MysqlRepository) ListActiveRecurringEventsWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
 	[]entity.RecurringEvent, error) {
 
 	// TODO: recurrence の UNTIL を考慮し、有効期限が切れたイベントも除外したい
+	// 事前に UNTIL をカラムに保存しておく必要がある
 	rows, err := r.db.QueryContext(
 		ctx,
 		"SELECT id, calendar_id, summary, recurrence, start, end, status "+

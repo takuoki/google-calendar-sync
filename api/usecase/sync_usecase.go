@@ -86,7 +86,11 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	shouldSaveRecurringEvents := make([]entity.RecurringEvent, 0, len(recurringEvents))
 	recurringEventInstanceMap := map[valueobject.EventID][]entity.Event{}
 	if len(recurringEvents) > 0 {
-		recurringEventMap, err := u.fetchRecurringEventMap(ctx, calendarID)
+		// ここでは終了日が到達していない定期イベントのみを取得する
+		// 終了日が到達した定期イベントの終了日が延期された場合はここでは取得されず、
+		// 新規定期イベントと同様の挙動となり、後続の SyncRecurringEventAndInstancesWithAfter が呼ばれる
+		// （登録時に再度、存在チェックを行なっているため、新規登録ではなく更新処理となる）
+		recurringEventMap, err := u.fetchRecurringEventMapWithAfter(ctx, calendarID, syncTime.Add(syncEventFrom))
 		if err != nil {
 			return fmt.Errorf("fail to fetch recurring event map: %w", err)
 		}
@@ -150,9 +154,9 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 }
 
 func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, []entity.RecurringEvent, string, error) {
-	oneWeekAgo := u.clockService.Today().Add(syncEventFrom)
+	after := u.clockService.Today().Add(syncEventFrom)
 
-	events, recurringEvents, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, oneWeekAgo)
+	events, recurringEvents, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, after)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("fail to list events: %w", err)
 	}
@@ -160,10 +164,10 @@ func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.Calend
 	return events, recurringEvents, nextSyncToken, nil
 }
 
-func (u *syncUsecase) fetchRecurringEventMap(ctx context.Context, calendarID valueobject.CalendarID) (
+func (u *syncUsecase) fetchRecurringEventMapWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
 	map[valueobject.EventID]entity.RecurringEvent, error) {
 
-	recurringEvents, err := u.databaseRepo.ListActiveRecurringEvents(ctx, calendarID)
+	recurringEvents, err := u.databaseRepo.ListActiveRecurringEventsWithAfter(ctx, calendarID, after)
 	if err != nil {
 		return nil, fmt.Errorf("fail to list recurring events: %w", err)
 	}
