@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/takuoki/google-calendar-sync/api/domain/constant"
@@ -83,13 +82,19 @@ func (tx *mysqlTransaction) SyncRecurringEventAndInstancesWithAfter(ctx context.
 func (tx *mysqlTransaction) syncRecurringEvent(ctx context.Context, recurringEvent entity.RecurringEvent) (
 	updatedCount int, err error) {
 
-	var dbRecurringEvent entity.RecurringEvent
+	// 非定期イベントを定期イベントに更新した場合を考慮し、events テーブルのデータが存在する場合はキャンセルする
+	cnt, err := tx.cancelEventIfExist(ctx, recurringEvent.CalendarID, recurringEvent.ID)
+	if err != nil {
+		return 0, fmt.Errorf("fail to cancel event: %w", err)
+	}
+	updatedCount += cnt
 
+	var dbRecurringEvent entity.RecurringEvent
 	err = tx.tx.QueryRowContext(
 		ctx,
 		"SELECT id, calendar_id, summary, recurrence, start, end, status "+
-			"FROM recurring_events WHERE id = ?",
-		recurringEvent.ID,
+			"FROM recurring_events WHERE calendar_id = ? AND id = ?",
+		recurringEvent.CalendarID, recurringEvent.ID,
 	).Scan(&dbRecurringEvent.ID, &dbRecurringEvent.CalendarID, &dbRecurringEvent.Summary,
 		&dbRecurringEvent.Recurrence, &dbRecurringEvent.Start, &dbRecurringEvent.End, &dbRecurringEvent.Status)
 
@@ -102,12 +107,12 @@ func (tx *mysqlTransaction) syncRecurringEvent(ctx context.Context, recurringEve
 		if err := tx.createRecurringEvent(ctx, recurringEvent); err != nil {
 			return 0, fmt.Errorf("fail to create recurring event: %w", err)
 		}
-		return 1, nil
+		return updatedCount + 1, nil
 	}
 
 	// DB に存在するが、データが同じ場合はスキップ
 	if recurringEvent.Equals(&dbRecurringEvent) {
-		return 0, nil
+		return updatedCount, nil
 	}
 
 	// DB に存在するが、データが異なる場合は更新
@@ -115,16 +120,16 @@ func (tx *mysqlTransaction) syncRecurringEvent(ctx context.Context, recurringEve
 		return 0, fmt.Errorf("fail to update recurring event: %w", err)
 	}
 
-	return 1, nil
+	return updatedCount + 1, nil
 }
 
 func (tx *mysqlTransaction) createRecurringEvent(ctx context.Context, recurringEvent entity.RecurringEvent) error {
 	_, err := tx.tx.ExecContext(
 		ctx,
 		"INSERT INTO recurring_events "+
-			"(id, calendar_id, summary, recurrence, start, end, status) "+
+			"(calendar_id, id, summary, recurrence, start, end, status) "+
 			"VALUES (?, ?, ?, ?, ?, ?, ?)",
-		recurringEvent.ID, recurringEvent.CalendarID, recurringEvent.Summary,
+		recurringEvent.CalendarID, recurringEvent.ID, recurringEvent.Summary,
 		recurringEvent.Recurrence, recurringEvent.Start, recurringEvent.End, recurringEvent.Status)
 	if err != nil {
 		return fmt.Errorf("fail to insert recurring event: %w", err)
@@ -138,53 +143,12 @@ func (tx *mysqlTransaction) updateRecurringEvent(ctx context.Context, recurringE
 		ctx,
 		"UPDATE recurring_events "+
 			"SET summary = ?, recurrence = ?, start = ?, end = ?, status = ? "+
-			"WHERE id = ? AND calendar_id = ?",
+			"WHERE calendar_id = ? AND id = ?",
 		recurringEvent.Summary, recurringEvent.Recurrence, recurringEvent.Start,
-		recurringEvent.End, recurringEvent.Status, recurringEvent.ID, recurringEvent.CalendarID)
+		recurringEvent.End, recurringEvent.Status, recurringEvent.CalendarID, recurringEvent.ID)
 	if err != nil {
 		return fmt.Errorf("fail to update recurring event: %w", err)
 	}
 
 	return nil
-}
-
-func (tx *mysqlTransaction) cancelEventInstancesWithAfter(ctx context.Context,
-	calendarID valueobject.CalendarID, recurringEventID valueobject.EventID, excludedEventIDs []valueobject.EventID,
-	after time.Time) (updatedCount int, err error) {
-
-	var query string
-	var args []interface{}
-
-	if len(excludedEventIDs) == 0 {
-		// excludedEventIDsが空の場合はid NOT IN 句は不要
-		query = "UPDATE events SET status = ? " +
-			"WHERE calendar_id = ? AND recurring_event_id = ? AND start >= ?"
-		args = []interface{}{constant.EventStatusCancelled, calendarID, recurringEventID, after}
-	} else {
-		placeholders := make([]string, len(excludedEventIDs))
-		for i := range excludedEventIDs {
-			placeholders[i] = "?"
-		}
-		query = "UPDATE events SET status = ? " +
-			"WHERE calendar_id = ? AND recurring_event_id = ? AND id NOT IN (" +
-			strings.Join(placeholders, ",") + ") AND start >= ?"
-		args = append(args, constant.EventStatusCancelled, calendarID, recurringEventID)
-		for _, id := range excludedEventIDs {
-			args = append(args, id)
-		}
-		args = append(args, after)
-	}
-
-	result, err := tx.tx.ExecContext(ctx, query, args...)
-	if err != nil {
-		return 0, fmt.Errorf("fail to update events: %w", err)
-	}
-
-	affectedRows, err := result.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("fail to get affected rows: %w", err)
-	}
-	updatedCount = int(affectedRows)
-
-	return updatedCount, nil
 }
