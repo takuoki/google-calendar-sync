@@ -68,7 +68,7 @@ func (tx *mysqlTransaction) SyncRecurringEventAndInstancesWithAfter(ctx context.
 		eventIDs = append(eventIDs, event.ID)
 	}
 
-	cnt, err = tx.cancelRecurringEventInstancesWithAfter(
+	cnt, err = tx.cancelEventInstancesWithAfter(
 		ctx, recurringEvent.CalendarID, recurringEvent.ID, eventIDs, after)
 	if err != nil {
 		return 0, fmt.Errorf("fail to cancel recurring event instances: %w", err)
@@ -147,7 +147,7 @@ func (tx *mysqlTransaction) updateRecurringEvent(ctx context.Context, recurringE
 	return nil
 }
 
-func (tx *mysqlTransaction) cancelRecurringEventInstancesWithAfter(ctx context.Context,
+func (tx *mysqlTransaction) cancelEventInstancesWithAfter(ctx context.Context,
 	calendarID valueobject.CalendarID, recurringEventID valueobject.EventID, excludedEventIDs []valueobject.EventID,
 	after time.Time) (updatedCount int, err error) {
 	result, err := tx.tx.ExecContext(
