@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/takuoki/google-calendar-sync/api/domain/constant"
@@ -150,11 +151,31 @@ func (tx *mysqlTransaction) updateRecurringEvent(ctx context.Context, recurringE
 func (tx *mysqlTransaction) cancelEventInstancesWithAfter(ctx context.Context,
 	calendarID valueobject.CalendarID, recurringEventID valueobject.EventID, excludedEventIDs []valueobject.EventID,
 	after time.Time) (updatedCount int, err error) {
-	result, err := tx.tx.ExecContext(
-		ctx,
-		"UPDATE events SET status = ? "+
-			"WHERE calendar_id = ? AND recurring_event_id = ? AND id NOT IN (?) AND start >= ?",
-		constant.EventStatusCancelled, calendarID, recurringEventID, excludedEventIDs, after)
+
+	var query string
+	var args []interface{}
+
+	if len(excludedEventIDs) == 0 {
+		// excludedEventIDsが空の場合はid NOT IN 句は不要
+		query = "UPDATE events SET status = ? " +
+			"WHERE calendar_id = ? AND recurring_event_id = ? AND start >= ?"
+		args = []interface{}{constant.EventStatusCancelled, calendarID, recurringEventID, after}
+	} else {
+		placeholders := make([]string, len(excludedEventIDs))
+		for i := range excludedEventIDs {
+			placeholders[i] = "?"
+		}
+		query = "UPDATE events SET status = ? " +
+			"WHERE calendar_id = ? AND recurring_event_id = ? AND id NOT IN (" +
+			strings.Join(placeholders, ",") + ") AND start >= ?"
+		args = append(args, constant.EventStatusCancelled, calendarID, recurringEventID)
+		for _, id := range excludedEventIDs {
+			args = append(args, id)
+		}
+		args = append(args, after)
+	}
+
+	result, err := tx.tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, fmt.Errorf("fail to update events: %w", err)
 	}

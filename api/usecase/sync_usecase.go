@@ -59,12 +59,14 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	syncTime := u.clockService.Now()
 
 	shouldSaveRecurringEvents, eventInstanceMap, err := u.listEventInstancesFromGoogleCalendar(
-		ctx, recurringEvents, calendarID, syncTime)
+		ctx, calendarID, recurringEvents, syncTime)
 	if err != nil {
 		return fmt.Errorf("fail to list event instances from Google Calendar: %w", err)
 	}
 
 	err = u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
+
+		u.logger.Trace(ctx, "start transaction")
 
 		if err := tx.LockCalendar(ctx, calendarID); err != nil {
 			return fmt.Errorf("fail to lock calendar: %w", err)
@@ -74,6 +76,8 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 
 		// events には定期イベントの個別イベントが含まれる可能性があるため、先に定期イベントを登録する
 		for _, recurringEvent := range shouldSaveRecurringEvents {
+			u.logger.Tracef(ctx, "sync recurring event: eventID=%q", recurringEvent.ID)
+
 			instances := eventInstanceMap[recurringEvent.ID]
 			cnt, err := tx.SyncRecurringEventAndInstancesWithAfter(
 				ctx, recurringEvent, instances, syncTime.Add(syncEventInstanceFrom))
@@ -84,6 +88,7 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 			updatedEventCount += cnt
 		}
 
+		u.logger.Trace(ctx, "sync events")
 		cnt, err := tx.SyncEvents(ctx, calendarID, events)
 		if err != nil {
 			return fmt.Errorf("fail to sync events: %w", err)
@@ -151,7 +156,7 @@ func (u *syncUsecase) listAllEventsFromGoogleCalendar(ctx context.Context, calen
 }
 
 func (u *syncUsecase) listEventInstancesFromGoogleCalendar(ctx context.Context,
-	recurringEvents []entity.RecurringEvent, calendarID valueobject.CalendarID, syncTime time.Time) (
+	calendarID valueobject.CalendarID, recurringEvents []entity.RecurringEvent, syncTime time.Time) (
 	[]entity.RecurringEvent, map[valueobject.EventID][]entity.Event, error) {
 
 	if len(recurringEvents) == 0 {
@@ -171,8 +176,8 @@ func (u *syncUsecase) listEventInstancesFromGoogleCalendar(ctx context.Context,
 	}
 
 	for _, recurringEvent := range recurringEvents {
-		recurringEvent, ok := recurringEventMap[recurringEvent.ID]
-		if ok && recurringEvent.Equals(&recurringEvent) {
+		dbRecurringEvent, ok := recurringEventMap[recurringEvent.ID]
+		if ok && recurringEvent.Equals(&dbRecurringEvent) {
 			// 既存の定期イベントと同じ場合はスキップ
 			continue
 		}

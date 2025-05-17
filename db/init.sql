@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS calendars (
 );
 
 CREATE TABLE IF NOT EXISTS recurring_events (
-    id VARCHAR(255) PRIMARY KEY,
     calendar_id VARCHAR(255) NOT NULL,
+    id VARCHAR(255) NOT NULL,
     summary VARCHAR(255) NOT NULL,
     recurrence VARCHAR(255) NOT NULL,
     start TIMESTAMP,
@@ -16,12 +16,13 @@ CREATE TABLE IF NOT EXISTS recurring_events (
     status VARCHAR(255) NOT NULL,
     created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
     updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (calendar_id, id),
     FOREIGN KEY (calendar_id) REFERENCES calendars(id)
 );
 
 CREATE TABLE IF NOT EXISTS events (
-    id VARCHAR(255) NOT NULL,
     calendar_id VARCHAR(255) NOT NULL,
+    id VARCHAR(255) NOT NULL,
     recurring_event_id VARCHAR(255),
     summary VARCHAR(255) NOT NULL,
     start TIMESTAMP,
@@ -31,7 +32,7 @@ CREATE TABLE IF NOT EXISTS events (
     updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (calendar_id, id),
     FOREIGN KEY (calendar_id) REFERENCES calendars(id),
-    FOREIGN KEY (recurring_event_id) REFERENCES recurring_events(id)
+    FOREIGN KEY (calendar_id, recurring_event_id) REFERENCES recurring_events(calendar_id, id)
 );
 
 CREATE TABLE IF NOT EXISTS channel_histories (
