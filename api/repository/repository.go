@@ -46,7 +46,8 @@ type DatabaseTransaction interface {
 	CreateCalendar(ctx context.Context, calendar entity.Calendar) error
 
 	// recurring_events
-	SyncRecurringEvents(ctx context.Context, recurringEvent entity.RecurringEvent, events []entity.Event) (updatedCount int, err error)
+	SyncRecurringEventAndInstancesWithAfter(ctx context.Context, recurringEvent entity.RecurringEvent, instances []entity.Event, after time.Time) (
+		updatedCount int, err error)
 
 	// events
 	SyncEvents(ctx context.Context, calendarID valueobject.CalendarID, events []entity.Event) (updatedCount int, err error)

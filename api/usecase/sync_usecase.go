@@ -7,6 +7,7 @@ import (
 
 	"github.com/takuoki/golib/applog"
 	"github.com/takuoki/google-calendar-sync/api/domain"
+	"github.com/takuoki/google-calendar-sync/api/domain/constant"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
@@ -97,11 +98,14 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 				continue
 			}
 
-			// TODO: 削除された recurringEvent の場合は API 呼び出し不要かもしれない
-			instances, err := u.googleCalenderRepo.ListEventInstancesBetween(
-				ctx, calendarID, recurringEvent.ID, syncTime.Add(syncEventInstanceFrom), syncTime.Add(syncEventInstanceTo))
-			if err != nil {
-				return fmt.Errorf("fail to list event instances: %w", err)
+			var instances []entity.Event
+			if recurringEvent.Status != constant.EventStatusCancelled {
+				instances, err = u.googleCalenderRepo.ListEventInstancesBetween(
+					ctx, calendarID, recurringEvent.ID,
+					syncTime.Add(syncEventInstanceFrom), syncTime.Add(syncEventInstanceTo))
+				if err != nil {
+					return fmt.Errorf("fail to list event instances: %w", err)
+				}
 			}
 
 			shouldSaveRecurringEvents = append(shouldSaveRecurringEvents, recurringEvent)
@@ -122,7 +126,8 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 
 		for _, recurringEvent := range shouldSaveRecurringEvents {
 			instances := recurringEventInstanceMap[recurringEvent.ID]
-			updatedCount, err := tx.SyncRecurringEvents(ctx, recurringEvent, instances)
+			updatedCount, err := tx.SyncRecurringEventAndInstancesWithAfter(
+				ctx, recurringEvent, instances, syncTime.Add(syncEventInstanceFrom))
 			if err != nil {
 				return fmt.Errorf("fail to sync recurring events: %w", err)
 			}
