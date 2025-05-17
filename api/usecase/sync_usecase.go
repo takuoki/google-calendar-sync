@@ -65,7 +65,7 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 			if err == domain.SyncTokenIsOldError {
 				// syncToken が古い場合は、全件取得して更新する
 				u.logger.Info(ctx, "sync token is old, sync all events")
-				events, recurringEvents, nextSyncToken, err = u.syncAll(ctx, calendarID)
+				events, recurringEvents, nextSyncToken, err = u.listAllEvents(ctx, calendarID)
 				if err != nil {
 					return fmt.Errorf("fail to sync all events (sync token is old): %w", err)
 				}
@@ -75,7 +75,7 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 		}
 	} else {
 		u.logger.Info(ctx, "sync all events")
-		events, recurringEvents, nextSyncToken, err = u.syncAll(ctx, calendarID)
+		events, recurringEvents, nextSyncToken, err = u.listAllEvents(ctx, calendarID)
 		if err != nil {
 			return fmt.Errorf("fail to sync all events (sync token doesn't exist): %w", err)
 		}
@@ -158,7 +158,7 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	return nil
 }
 
-func (u *syncUsecase) syncAll(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, []entity.RecurringEvent, string, error) {
+func (u *syncUsecase) listAllEvents(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, []entity.RecurringEvent, string, error) {
 	after := u.clockService.Today().Add(syncEventFrom)
 
 	events, recurringEvents, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, after)
