@@ -2,121 +2,115 @@ package googlecalendar
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
 	calendar "google.golang.org/api/calendar/v3"
-	"google.golang.org/api/googleapi"
 
 	"github.com/takuoki/golib/applog"
-	"github.com/takuoki/google-calendar-sync/api/domain"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/service"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
 
 func (r *googleCalendarRepository) ListEventsWithAfter(
-	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
-	// TODO: トークン失効を考慮すると、ShowDeleted=trueで呼び出す必要がある
-	call := r.service.Events.List(string(calendarID)).Context(ctx).TimeMin(after.Format(time.RFC3339))
-	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
+	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
+	return listEventsWithAfter(ctx, r.service, r.clockService, r.logger, calendarID, after)
 }
 
 func (r *googleCalendarWithOauthRepository) ListEventsWithAfter(
-	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, string, error) {
-	// TODO: トークン失効を考慮すると、ShowDeleted=trueで呼び出す必要がある
+	ctx context.Context, calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
+
 	service, err := r.getCalendarService(ctx, calendarID)
 	if err != nil {
-		return nil, "", fmt.Errorf("fail to get calendar service: %w", err)
+		return nil, nil, "", fmt.Errorf("fail to get calendar service: %w", err)
 	}
 
-	call := service.Events.List(string(calendarID)).Context(ctx).TimeMin(after.Format(time.RFC3339))
-	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
+	return listEventsWithAfter(ctx, service, r.clockService, r.logger, calendarID, after)
+}
+
+func listEventsWithAfter(
+	ctx context.Context, service *calendar.Service, clockService service.Clock, logger applog.Logger,
+	calendarID valueobject.CalendarID, after time.Time) ([]entity.Event, []entity.RecurringEvent, string, error) {
+
+	call := &eventsListCallWrapper{
+		call: service.Events.List(string(calendarID)).Context(ctx).
+			ShowDeleted(true).
+			TimeMin(after.Format(time.RFC3339)),
+	}
+
+	return listEvents(ctx, clockService, logger, call, calendarID)
 }
 
 func (r *googleCalendarRepository) ListEventsWithSyncToken(
-	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
-	call := r.service.Events.List(string(calendarID)).Context(ctx).SyncToken(syncToken)
-	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
+	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
+	return listEventsWithSyncToken(ctx, r.service, r.clockService, r.logger, calendarID, syncToken)
 }
 
 func (r *googleCalendarWithOauthRepository) ListEventsWithSyncToken(
-	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, string, error) {
+	ctx context.Context, calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
 
 	service, err := r.getCalendarService(ctx, calendarID)
 	if err != nil {
-		return nil, "", fmt.Errorf("fail to get calendar service: %w", err)
+		return nil, nil, "", fmt.Errorf("fail to get calendar service: %w", err)
 	}
 
-	call := service.Events.List(string(calendarID)).Context(ctx).SyncToken(syncToken)
-	return listEvents(ctx, call, calendarID, r.clockService, r.logger)
+	return listEventsWithSyncToken(ctx, service, r.clockService, r.logger, calendarID, syncToken)
 }
 
-// TODO: EventsListCall だけでなく、EventsInstancesCall も受け取れるようにする
-func listEvents(ctx context.Context, baseCall *calendar.EventsListCall,
-	calendarID valueobject.CalendarID, clockService service.Clock, logger applog.Logger) ([]entity.Event, string, error) {
+func listEventsWithSyncToken(ctx context.Context, service *calendar.Service, clockService service.Clock, logger applog.Logger,
+	calendarID valueobject.CalendarID, syncToken string) ([]entity.Event, []entity.RecurringEvent, string, error) {
 
-	pageToken := ""
-	syncToken := ""
-	res := []entity.Event{}
-	for syncToken == "" { // 最後のページまで取得すると必ず値が入る
-		if err := ctx.Err(); err != nil {
-			return nil, "", fmt.Errorf("context error: %w", err)
-		}
-
-		var call *calendar.EventsListCall
-		if pageToken == "" {
-			call = baseCall
-		} else {
-			call = baseCall.PageToken(pageToken)
-		}
-
-		events, err := call.Do()
-		if err != nil {
-			// WARNING: syncToken が古い場合については動作確認未実施
-			// see: https://pkg.go.dev/google.golang.org/api/calendar/v3#EventsListCall.SyncToken
-			if gErr, ok := err.(*googleapi.Error); ok && gErr.Code == 410 {
-				return nil, "", domain.SyncTokenIsOldError
-			}
-			return nil, "", fmt.Errorf("fail to list events: %w", err)
-		}
-
-		for _, item := range events.Items {
-
-			// TODO: この Debug ログは最終的には削除する（ログの量が多いため）
-			itemJSON, err := json.Marshal(item)
-			if err != nil {
-				return nil, "", fmt.Errorf("fail to marshal event item to JSON: %w", err)
-			}
-			logger.Debugf(ctx, "event detail: %s", string(itemJSON))
-
-			start, err := convertDateTime(item.Start, events.TimeZone)
-			if err != nil {
-				return nil, "", fmt.Errorf("fail to convert start datetime: %w", err)
-			}
-			end, err := convertDateTime(item.End, events.TimeZone)
-			if err != nil {
-				return nil, "", fmt.Errorf("fail to convert end datetime: %w", err)
-			}
-
-			res = append(res, entity.Event{
-				ID:         valueobject.EventID(item.Id),
-				CalendarID: calendarID,
-				Summary:    item.Summary,
-				Start:      start,
-				End:        end,
-				Status:     item.Status,
-			})
-		}
-
-		pageToken = events.NextPageToken
-		syncToken = events.NextSyncToken
-
-		logger.Debugf(ctx, "list events: pageToken=%q, syncToken=%q", pageToken, syncToken)
+	call := &eventsListCallWrapper{
+		call: service.Events.List(string(calendarID)).Context(ctx).
+			SyncToken(syncToken),
 	}
 
-	return res, syncToken, nil
+	return listEvents(ctx, clockService, logger, call, calendarID)
+}
+
+func (r *googleCalendarRepository) ListEventInstancesBetween(
+	ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID, from, to time.Time) ([]entity.Event, error) {
+	return listEventInstancesBetween(ctx, r.service, r.clockService, r.logger, calendarID, eventID, from, to)
+}
+
+func (r *googleCalendarWithOauthRepository) ListEventInstancesBetween(
+	ctx context.Context, calendarID valueobject.CalendarID, eventID valueobject.EventID, from, to time.Time) ([]entity.Event, error) {
+
+	service, err := r.getCalendarService(ctx, calendarID)
+	if err != nil {
+		return nil, fmt.Errorf("fail to get calendar service: %w", err)
+	}
+
+	return listEventInstancesBetween(ctx, service, r.clockService, r.logger, calendarID, eventID, from, to)
+}
+
+func listEventInstancesBetween(ctx context.Context, service *calendar.Service, clockService service.Clock, logger applog.Logger,
+	calendarID valueobject.CalendarID, eventID valueobject.EventID, from, to time.Time) ([]entity.Event, error) {
+
+	call := &eventsInstancesCallWrapper{
+		call: service.Events.Instances(string(calendarID), string(eventID)).Context(ctx).
+			// 個別イベント化されていない子イベントを更新する場合は、全削除＆全登録のため、削除されたものは取得不要
+			// 個別イベント化されたイベントは、通常の listEvents で差分取得されるため、ここでは考慮不要
+			ShowDeleted(false).
+			TimeMin(from.Format(time.RFC3339)).
+			TimeMax(to.Format(time.RFC3339)),
+	}
+
+	// 子イベント取得時は差分取得ではないため、syncToken は不要
+	events, recurringEvents, _, err := listEvents(ctx, clockService, logger, call, calendarID)
+
+	if len(recurringEvents) > 0 {
+		// 子イベント取得時には定期的なイベントは取得されない想定のため、ログ出力のみ実施して返さない
+		recurringEventIDs := make([]string, 0, len(recurringEvents))
+		for _, recurringEvent := range recurringEvents {
+			recurringEventIDs = append(recurringEventIDs, string(recurringEvent.ID))
+		}
+
+		logger.Warnf(ctx, "recurring events are found when listing event instances (eventID: %s, recurringEventIDs: %v)", eventID, recurringEventIDs)
+	}
+
+	return events, err
 }
 
 func (r *googleCalendarRepository) Watch(ctx context.Context, calendarID valueobject.CalendarID) (*entity.Channel, error) {
