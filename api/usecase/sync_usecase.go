@@ -58,38 +58,10 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 
 	syncTime := u.clockService.Now()
 
-	shouldSaveRecurringEvents := make([]entity.RecurringEvent, 0, len(recurringEvents))
-	recurringEventInstanceMap := map[valueobject.EventID][]entity.Event{}
-	if len(recurringEvents) > 0 {
-		// ここでは終了日が到達していない定期イベントのみを取得する
-		// 終了日が到達した定期イベントの終了日が延期された場合はここでは取得されず、
-		// 新規定期イベントと同様の挙動となり、後続の SyncRecurringEventAndInstancesWithAfter が呼ばれる
-		// （登録時に再度、存在チェックを行なっているため、新規登録ではなく更新処理となる）
-		recurringEventMap, err := u.fetchRecurringEventMapWithAfter(ctx, calendarID, syncTime.Add(syncEventFrom))
-		if err != nil {
-			return fmt.Errorf("fail to fetch recurring event map: %w", err)
-		}
-
-		for _, recurringEvent := range recurringEvents {
-			recurringEvent, ok := recurringEventMap[recurringEvent.ID]
-			if ok && recurringEvent.Equals(&recurringEvent) {
-				// 既存の定期イベントと同じ場合はスキップ
-				continue
-			}
-
-			var instances []entity.Event
-			if recurringEvent.Status != constant.EventStatusCancelled {
-				instances, err = u.googleCalenderRepo.ListEventInstancesBetween(
-					ctx, calendarID, recurringEvent.ID,
-					syncTime.Add(syncEventInstanceFrom), syncTime.Add(syncEventInstanceTo))
-				if err != nil {
-					return fmt.Errorf("fail to list event instances: %w", err)
-				}
-			}
-
-			shouldSaveRecurringEvents = append(shouldSaveRecurringEvents, recurringEvent)
-			recurringEventInstanceMap[recurringEvent.ID] = instances
-		}
+	shouldSaveRecurringEvents, eventInstanceMap, err := u.listEventInstancesFromGoogleCalendar(
+		ctx, recurringEvents, calendarID, syncTime)
+	if err != nil {
+		return fmt.Errorf("fail to list event instances from Google Calendar: %w", err)
 	}
 
 	err = u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
@@ -102,7 +74,7 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 
 		// events には定期イベントの個別イベントが含まれる可能性があるため、先に定期イベントを登録する
 		for _, recurringEvent := range shouldSaveRecurringEvents {
-			instances := recurringEventInstanceMap[recurringEvent.ID]
+			instances := eventInstanceMap[recurringEvent.ID]
 			cnt, err := tx.SyncRecurringEventAndInstancesWithAfter(
 				ctx, recurringEvent, instances, syncTime.Add(syncEventInstanceFrom))
 			if err != nil {
@@ -176,6 +148,50 @@ func (u *syncUsecase) listAllEventsFromGoogleCalendar(ctx context.Context, calen
 	}
 
 	return events, recurringEvents, nextSyncToken, nil
+}
+
+func (u *syncUsecase) listEventInstancesFromGoogleCalendar(ctx context.Context,
+	recurringEvents []entity.RecurringEvent, calendarID valueobject.CalendarID, syncTime time.Time) (
+	[]entity.RecurringEvent, map[valueobject.EventID][]entity.Event, error) {
+
+	if len(recurringEvents) == 0 {
+		return nil, nil, nil
+	}
+
+	shouldSaveRecurringEvents := make([]entity.RecurringEvent, 0, len(recurringEvents))
+	eventInstanceMap := map[valueobject.EventID][]entity.Event{}
+
+	// ここでは終了日が到達していない定期イベントのみを取得する
+	// 終了日が到達した定期イベントの終了日が延期された場合はここでは取得されず、
+	// 新規定期イベントと同様の挙動となり、後続の SyncRecurringEventAndInstancesWithAfter が呼ばれる
+	// （登録時に再度、存在チェックを行なっているため、新規登録ではなく更新処理となる）
+	recurringEventMap, err := u.fetchRecurringEventMapWithAfter(ctx, calendarID, syncTime.Add(syncEventFrom))
+	if err != nil {
+		return nil, nil, fmt.Errorf("fail to fetch recurring event map: %w", err)
+	}
+
+	for _, recurringEvent := range recurringEvents {
+		recurringEvent, ok := recurringEventMap[recurringEvent.ID]
+		if ok && recurringEvent.Equals(&recurringEvent) {
+			// 既存の定期イベントと同じ場合はスキップ
+			continue
+		}
+
+		var instances []entity.Event
+		if recurringEvent.Status != constant.EventStatusCancelled {
+			instances, err = u.googleCalenderRepo.ListEventInstancesBetween(
+				ctx, calendarID, recurringEvent.ID,
+				syncTime.Add(syncEventInstanceFrom), syncTime.Add(syncEventInstanceTo))
+			if err != nil {
+				return nil, nil, fmt.Errorf("fail to list event instances: %w", err)
+			}
+		}
+
+		shouldSaveRecurringEvents = append(shouldSaveRecurringEvents, recurringEvent)
+		eventInstanceMap[recurringEvent.ID] = instances
+	}
+
+	return shouldSaveRecurringEvents, eventInstanceMap, nil
 }
 
 func (u *syncUsecase) fetchRecurringEventMapWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
