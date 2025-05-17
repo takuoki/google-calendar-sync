@@ -123,21 +123,26 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 			return fmt.Errorf("fail to lock calendar: %w", err)
 		}
 
-		updatedEventCount, err := tx.SyncEvents(ctx, calendarID, events)
-		if err != nil {
-			return fmt.Errorf("fail to sync events: %w", err)
-		}
+		updatedEventCount := 0
 
+		// events には定期イベントの個別イベントが含まれる可能性があるため、先に定期イベントを登録する
 		for _, recurringEvent := range shouldSaveRecurringEvents {
 			instances := recurringEventInstanceMap[recurringEvent.ID]
-			updatedCount, err := tx.SyncRecurringEventAndInstancesWithAfter(
+			cnt, err := tx.SyncRecurringEventAndInstancesWithAfter(
 				ctx, recurringEvent, instances, syncTime.Add(syncEventInstanceFrom))
 			if err != nil {
 				return fmt.Errorf("fail to sync recurring events: %w", err)
 			}
 
-			updatedEventCount += updatedCount
+			updatedEventCount += cnt
 		}
+
+		cnt, err := tx.SyncEvents(ctx, calendarID, events)
+		if err != nil {
+			return fmt.Errorf("fail to sync events: %w", err)
+		}
+
+		updatedEventCount += cnt
 
 		if err := tx.CreateSyncHistory(ctx, calendarID, syncTime, nextSyncToken, updatedEventCount); err != nil {
 			return fmt.Errorf("fail to create sync history: %w", err)
