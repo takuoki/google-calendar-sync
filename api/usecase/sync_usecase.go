@@ -116,7 +116,23 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 	return nil
 }
 
-func (u *syncUsecase) listEventsFromGoogleCalendar(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, []entity.RecurringEvent, string, error) {
+// listEventsFromGoogleCalendar retrieves events and recurring events from a Google Calendar.
+//
+// It first attempts to fetch events using the latest sync token stored in the database.
+// If the sync token is outdated or does not exist, it falls back to fetching all events from the calendar.
+//
+// Recurring event and non-recurring event are determined by the presence or absence
+// of the latest recurring setting (`recurrence`).
+// Note that if a recurring event is changed to a non-recurring event,
+// the recurring event before the change is not included (and vice versa).
+//
+// Returns:
+// - events: A slice of non-recurring events retrieved from the calendar.
+// - recurringEvents: A slice of recurring events retrieved from the calendar.
+// - nextSyncToken: A string representing the next sync token to be used for subsequent sync operations.
+// - error: An error object if the operation fails, or nil if successful.
+func (u *syncUsecase) listEventsFromGoogleCalendar(ctx context.Context, calendarID valueobject.CalendarID) (
+	[]entity.Event, []entity.RecurringEvent, string, error) {
 	syncToken, err := u.databaseRepo.GetLatestSyncToken(ctx, calendarID)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("fail to get latest sync token: %w", err)
@@ -150,7 +166,8 @@ func (u *syncUsecase) listEventsFromGoogleCalendar(ctx context.Context, calendar
 	return events, recurringEvents, nextSyncToken, nil
 }
 
-func (u *syncUsecase) listAllEventsFromGoogleCalendar(ctx context.Context, calendarID valueobject.CalendarID) ([]entity.Event, []entity.RecurringEvent, string, error) {
+func (u *syncUsecase) listAllEventsFromGoogleCalendar(ctx context.Context, calendarID valueobject.CalendarID) (
+	[]entity.Event, []entity.RecurringEvent, string, error) {
 	after := u.clockService.Today().Add(syncEventFrom)
 
 	events, recurringEvents, nextSyncToken, err := u.googleCalenderRepo.ListEventsWithAfter(ctx, calendarID, after)
@@ -161,7 +178,10 @@ func (u *syncUsecase) listAllEventsFromGoogleCalendar(ctx context.Context, calen
 	return events, recurringEvents, nextSyncToken, nil
 }
 
-func (u *syncUsecase) moveOrCopyCancelledRecurringEvents(ctx context.Context, events []entity.Event, recurringEvents []entity.RecurringEvent) ([]entity.Event, []entity.RecurringEvent, error) {
+func (u *syncUsecase) moveOrCopyCancelledRecurringEvents(ctx context.Context,
+	events []entity.Event, recurringEvents []entity.RecurringEvent) (
+	[]entity.Event, []entity.RecurringEvent, error) {
+
 	if len(events) == 0 {
 		return events, recurringEvents, nil
 	}
