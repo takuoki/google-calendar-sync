@@ -142,8 +142,7 @@ func convertDateTime(datetime *calendar.EventDateTime, location string) (*time.T
 		return &t, nil
 	}
 
-	// TODO: ここを通るケースが存在するか確認する（削除データとか？）
-	return nil, nil
+	return nil, fmt.Errorf("invalid datetime: %+v", datetime)
 }
 
 func convertUnitTime(t int64) (time.Time, error) {
