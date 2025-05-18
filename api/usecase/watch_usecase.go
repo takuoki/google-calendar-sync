@@ -42,7 +42,7 @@ func (u *watchUsecase) StartAll(ctx context.Context) error {
 
 	for _, calendar := range calendars {
 		if err := u.Start(ctx, calendar.ID); err != nil {
-			return fmt.Errorf("fail to start: %w", err)
+			return fmt.Errorf("fail to start (calendarID: %q): %w", calendar.ID, err)
 		}
 	}
 
