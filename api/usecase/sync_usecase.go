@@ -58,6 +58,12 @@ func (u *syncUsecase) Sync(ctx context.Context, calendarID valueobject.CalendarI
 
 	syncTime := u.clockService.Now()
 
+	// 定期イベントの削除や Recurrence の削除を考慮し、 events と recurringEvents を更新する
+	events, recurringEvents, err = u.moveOrCopyCancelledRecurringEvents(ctx, events, recurringEvents)
+	if err != nil {
+		return fmt.Errorf("fail to move cancelled recurring events: %w", err)
+	}
+
 	shouldSaveRecurringEvents, eventInstanceMap, err := u.listEventInstancesFromGoogleCalendar(
 		ctx, calendarID, recurringEvents, syncTime)
 	if err != nil {
@@ -155,6 +161,62 @@ func (u *syncUsecase) listAllEventsFromGoogleCalendar(ctx context.Context, calen
 	return events, recurringEvents, nextSyncToken, nil
 }
 
+func (u *syncUsecase) moveOrCopyCancelledRecurringEvents(ctx context.Context, events []entity.Event, recurringEvents []entity.RecurringEvent) ([]entity.Event, []entity.RecurringEvent, error) {
+	if len(events) == 0 {
+		return events, recurringEvents, nil
+	}
+
+	eventIDs := make([]valueobject.EventID, 0, len(events))
+	for _, event := range events {
+		eventIDs = append(eventIDs, event.ID)
+	}
+
+	// 定期イベントテーブルに有効で存在するものを取得
+	// すでにキャンセルされている場合は、子イベントもキャンセルになっているはずなので抽出対象外
+	recurringEventMap, err := u.fetchRecurringEventMapWithIDs(ctx, events[0].CalendarID, eventIDs)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fail to list active recurring events: %w", err)
+	}
+
+	resEvents := make([]entity.Event, 0, len(events))
+	resRecurringEvents := recurringEvents
+	for _, event := range events {
+		if _, ok := recurringEventMap[event.ID]; !ok {
+			// DB に存在しない定期イベントは通常のイベントとして扱う
+			resEvents = append(resEvents, event)
+			continue
+		}
+
+		cancelledRecurringEvent := entity.NewCancelledRecurringEventFromEvent(event)
+		if event.Status == constant.EventStatusCancelled {
+			// イベントのステータスがキャンセルの場合、通常のイベントとしては扱わず、定期イベントをキャンセル扱いにする
+			resRecurringEvents = append(resRecurringEvents, cancelledRecurringEvent)
+		} else {
+			// イベントのステータスがキャンセル以外の場合、通常のイベントとして扱いつつ、定期イベントをキャンセル扱いにする
+			resEvents = append(resEvents, event)
+			resRecurringEvents = append(resRecurringEvents, cancelledRecurringEvent)
+		}
+	}
+
+	return resEvents, resRecurringEvents, nil
+}
+
+func (u *syncUsecase) fetchRecurringEventMapWithIDs(ctx context.Context, calendarID valueobject.CalendarID, eventIDs []valueobject.EventID) (
+	map[valueobject.EventID]entity.RecurringEvent, error) {
+
+	recurringEvents, err := u.databaseRepo.ListActiveRecurringEventsWithIDs(ctx, calendarID, eventIDs)
+	if err != nil {
+		return nil, fmt.Errorf("fail to list recurring events: %w", err)
+	}
+
+	recurringEventMap := map[valueobject.EventID]entity.RecurringEvent{}
+	for _, recurringEvent := range recurringEvents {
+		recurringEventMap[recurringEvent.ID] = recurringEvent
+	}
+
+	return recurringEventMap, nil
+}
+
 func (u *syncUsecase) listEventInstancesFromGoogleCalendar(ctx context.Context,
 	calendarID valueobject.CalendarID, recurringEvents []entity.RecurringEvent, syncTime time.Time) (
 	[]entity.RecurringEvent, map[valueobject.EventID][]entity.Event, error) {
@@ -199,6 +261,7 @@ func (u *syncUsecase) listEventInstancesFromGoogleCalendar(ctx context.Context,
 	return shouldSaveRecurringEvents, eventInstanceMap, nil
 }
 
+// TODO: fetchRecurringEventMapWithIDs とほとんど同じなので後で共通化する
 func (u *syncUsecase) fetchRecurringEventMapWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
 	map[valueobject.EventID]entity.RecurringEvent, error) {
 

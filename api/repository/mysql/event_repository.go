@@ -117,10 +117,11 @@ func (tx *mysqlTransaction) SyncEvents(ctx context.Context, calendarID valueobje
 		}
 
 		// DB に存在するが、内容が異なる場合は更新
-		if err := tx.updateEvent(ctx, event); err != nil {
+		cnt, err := tx.updateEvent(ctx, event)
+		if err != nil {
 			return 0, fmt.Errorf("fail to update event: %w", err)
 		}
-		updateCount++
+		updateCount += cnt
 	}
 
 	return updateCount, nil
@@ -177,24 +178,11 @@ func (tx *mysqlTransaction) fetchEventMap(ctx context.Context,
 	return eventMap, nil
 }
 
-func (tx *mysqlTransaction) updateEvent(ctx context.Context, event entity.Event) error {
-	_, err := tx.tx.ExecContext(ctx,
+func (tx *mysqlTransaction) updateEvent(ctx context.Context, event entity.Event) (updatedCount int, err error) {
+	result, err := tx.tx.ExecContext(ctx,
 		"UPDATE events SET recurring_event_id = ?, summary = ?, start = ?, end = ?, status = ? "+
 			"WHERE calendar_id = ? AND id = ?",
 		event.RecurringEventID, event.Summary, event.Start, event.End, event.Status, event.CalendarID, event.ID)
-	if err != nil {
-		return fmt.Errorf("fail to update event: %w", err)
-	}
-
-	return nil
-}
-
-func (tx *mysqlTransaction) cancelEventIfExist(ctx context.Context,
-	calendarID valueobject.CalendarID, eventID valueobject.EventID) (updatedCount int, err error) {
-
-	result, err := tx.tx.ExecContext(ctx,
-		"UPDATE events SET status = ? WHERE calendar_id = ? AND id = ?",
-		constant.EventStatusCancelled, calendarID, eventID)
 	if err != nil {
 		return 0, fmt.Errorf("fail to update event: %w", err)
 	}

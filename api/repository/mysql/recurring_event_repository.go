@@ -4,12 +4,59 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/takuoki/google-calendar-sync/api/domain/constant"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
+
+func (r *MysqlRepository) ListActiveRecurringEventsWithIDs(ctx context.Context,
+	calendarID valueobject.CalendarID, eventIDs []valueobject.EventID) ([]entity.RecurringEvent, error) {
+
+	if len(eventIDs) == 0 {
+		return []entity.RecurringEvent{}, nil
+	}
+
+	placeholders := make([]string, len(eventIDs))
+	args := make([]interface{}, 0, len(eventIDs)+2)
+	for i, id := range eventIDs {
+		placeholders[i] = "?"
+		args = append(args, id)
+	}
+	args = append([]interface{}{calendarID}, args...)
+	args = append(args, constant.EventStatusCancelled)
+
+	query := "SELECT id, calendar_id, summary, recurrence, start, end, status " +
+		"FROM recurring_events " +
+		"WHERE calendar_id = ? AND id IN (" + strings.Join(placeholders, ",") + ") AND status != ? " +
+		"ORDER BY id"
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("fail to select recurring events: %w", err)
+	}
+	defer func() {
+		if closeErr := rows.Close(); closeErr != nil {
+			r.logger.Errorf(ctx, "fail to close rows: %s", closeErr)
+		}
+	}()
+
+	var recurringEvents []entity.RecurringEvent
+	for rows.Next() {
+		var recurringEvent entity.RecurringEvent
+		err := rows.Scan(&recurringEvent.ID, &recurringEvent.CalendarID, &recurringEvent.Summary,
+			&recurringEvent.Recurrence, &recurringEvent.Start, &recurringEvent.End, &recurringEvent.Status)
+		if err != nil {
+			return nil, fmt.Errorf("fail to scan row: %w", err)
+		}
+
+		recurringEvents = append(recurringEvents, recurringEvent)
+	}
+
+	return recurringEvents, nil
+}
 
 func (r *MysqlRepository) ListActiveRecurringEventsWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
 	[]entity.RecurringEvent, error) {
@@ -83,9 +130,11 @@ func (tx *mysqlTransaction) syncRecurringEvent(ctx context.Context, recurringEve
 	updatedCount int, err error) {
 
 	// 非定期イベントを定期イベントに更新した場合を考慮し、events テーブルのデータが存在する場合はキャンセルする
-	cnt, err := tx.cancelEventIfExist(ctx, recurringEvent.CalendarID, recurringEvent.ID)
+	// すでにキャンセルされている場合も更新される
+	cancelledEvent := entity.NewCancelledEventFromRecurringEvent(recurringEvent)
+	cnt, err := tx.updateEvent(ctx, cancelledEvent)
 	if err != nil {
-		return 0, fmt.Errorf("fail to cancel event: %w", err)
+		return 0, fmt.Errorf("fail to update event for cancel: %w", err)
 	}
 	updatedCount += cnt
 
