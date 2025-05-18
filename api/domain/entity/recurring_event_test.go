@@ -31,8 +31,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 		},
 		"equal events": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -40,8 +40,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -50,31 +50,10 @@ func TestRecurringEvent_Equals(t *testing.T) {
 			},
 			expected: true,
 		},
-		"different ID": {
-			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
-				CalendarID: valueobject.CalendarID("cal1"),
-				Summary:    "Meeting",
-				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
-				Start:      &now,
-				End:        &otherTime,
-				Status:     "confirmed",
-			},
-			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("2"),
-				CalendarID: valueobject.CalendarID("cal1"),
-				Summary:    "Meeting",
-				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
-				Start:      &now,
-				End:        &otherTime,
-				Status:     "confirmed",
-			},
-			expected: false,
-		},
 		"different CalendarID": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -82,8 +61,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal2"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -92,10 +71,10 @@ func TestRecurringEvent_Equals(t *testing.T) {
 			},
 			expected: false,
 		},
-		"different RecurringEventID": {
+		"different ID": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -103,8 +82,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
-				CalendarID: valueobject.CalendarID("cal2"),
+				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("2"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -115,8 +94,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 		},
 		"different Summary": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -124,8 +103,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Workshop",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -136,8 +115,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 		},
 		"different Recurrence": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -145,8 +124,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Workshop",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO:UNTIL=20301231"]`,
 				Start:      &now,
@@ -157,8 +136,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 		},
 		"different Start": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -166,8 +145,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &otherTime,
@@ -178,8 +157,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 		},
 		"different End": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -187,8 +166,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -199,8 +178,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 		},
 		"different Status": {
 			event1: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,
@@ -208,8 +187,8 @@ func TestRecurringEvent_Equals(t *testing.T) {
 				Status:     "confirmed",
 			},
 			event2: &entity.RecurringEvent{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Recurrence: `["RRULE:FREQ=WEEKLY;BYDAY=MO"]`,
 				Start:      &now,

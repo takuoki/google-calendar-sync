@@ -31,8 +31,8 @@ func TestEvent_Equals(t *testing.T) {
 		},
 		"equal events": {
 			event1: &entity.Event{
-				ID:               valueobject.EventID("1"),
 				CalendarID:       valueobject.CalendarID("cal1"),
+				ID:               valueobject.EventID("1"),
 				RecurringEventID: valueobject.NewEventID("r1"),
 				Summary:          "Meeting",
 				Start:            &now,
@@ -40,8 +40,8 @@ func TestEvent_Equals(t *testing.T) {
 				Status:           "confirmed",
 			},
 			event2: &entity.Event{
-				ID:               valueobject.EventID("1"),
 				CalendarID:       valueobject.CalendarID("cal1"),
+				ID:               valueobject.EventID("1"),
 				RecurringEventID: valueobject.NewEventID("r1"),
 				Summary:          "Meeting",
 				Start:            &now,
@@ -50,18 +50,18 @@ func TestEvent_Equals(t *testing.T) {
 			},
 			expected: true,
 		},
-		"different ID": {
+		"different CalendarID": {
 			event1: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
 				Status:     "confirmed",
 			},
 			event2: &entity.Event{
-				ID:         valueobject.EventID("2"),
-				CalendarID: valueobject.CalendarID("cal1"),
+				CalendarID: valueobject.CalendarID("cal2"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
@@ -69,18 +69,18 @@ func TestEvent_Equals(t *testing.T) {
 			},
 			expected: false,
 		},
-		"different CalendarID": {
+		"different ID": {
 			event1: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
 				Status:     "confirmed",
 			},
 			event2: &entity.Event{
-				ID:         valueobject.EventID("1"),
-				CalendarID: valueobject.CalendarID("cal2"),
+				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("2"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
@@ -90,8 +90,8 @@ func TestEvent_Equals(t *testing.T) {
 		},
 		"different RecurringEventID": {
 			event1: &entity.Event{
-				ID:               valueobject.EventID("1"),
 				CalendarID:       valueobject.CalendarID("cal1"),
+				ID:               valueobject.EventID("1"),
 				RecurringEventID: valueobject.NewEventID("r1"),
 				Summary:          "Meeting",
 				Start:            &now,
@@ -99,8 +99,8 @@ func TestEvent_Equals(t *testing.T) {
 				Status:           "confirmed",
 			},
 			event2: &entity.Event{
+				CalendarID:       valueobject.CalendarID("cal1"),
 				ID:               valueobject.EventID("1"),
-				CalendarID:       valueobject.CalendarID("cal2"),
 				RecurringEventID: valueobject.NewEventID("r2"),
 				Summary:          "Meeting",
 				Start:            &now,
@@ -111,16 +111,16 @@ func TestEvent_Equals(t *testing.T) {
 		},
 		"different Summary": {
 			event1: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
 				Status:     "confirmed",
 			},
 			event2: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Workshop",
 				Start:      &now,
 				End:        &otherTime,
@@ -130,16 +130,16 @@ func TestEvent_Equals(t *testing.T) {
 		},
 		"different Start": {
 			event1: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
 				Status:     "confirmed",
 			},
 			event2: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &otherTime,
 				End:        &otherTime,
@@ -149,16 +149,16 @@ func TestEvent_Equals(t *testing.T) {
 		},
 		"different End": {
 			event1: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
 				Status:     "confirmed",
 			},
 			event2: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &now,
@@ -168,16 +168,16 @@ func TestEvent_Equals(t *testing.T) {
 		},
 		"different Status": {
 			event1: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
 				Status:     "confirmed",
 			},
 			event2: &entity.Event{
-				ID:         valueobject.EventID("1"),
 				CalendarID: valueobject.CalendarID("cal1"),
+				ID:         valueobject.EventID("1"),
 				Summary:    "Meeting",
 				Start:      &now,
 				End:        &otherTime,
