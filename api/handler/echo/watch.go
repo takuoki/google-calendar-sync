@@ -17,8 +17,7 @@ func (h *handler) PostWatch(c echo.Context, params openapi.PostWatchParams) erro
 		return domain.AllParameterFalseError
 	}
 
-	err := h.watchUsecase.StartAll(ctx)
-	if err != nil {
+	if err := h.watchUsecase.StartAll(ctx); err != nil {
 		return fmt.Errorf("fail to watch all calendars: %w", err)
 	}
 
@@ -28,8 +27,7 @@ func (h *handler) PostWatch(c echo.Context, params openapi.PostWatchParams) erro
 func (h *handler) PostWatchCalendarId(c echo.Context, calendarId string) error {
 	ctx := context.Background()
 
-	err := h.watchUsecase.Start(ctx, valueobject.CalendarID(calendarId))
-	if err != nil {
+	if err := h.watchUsecase.Start(ctx, valueobject.CalendarID(calendarId)); err != nil {
 		return fmt.Errorf("fail to watch calendar: %w", err)
 	}
 
@@ -39,8 +37,7 @@ func (h *handler) PostWatchCalendarId(c echo.Context, calendarId string) error {
 func (h *handler) DeleteWatchCalendarId(c echo.Context, calendarId string) error {
 	ctx := context.Background()
 
-	err := h.watchUsecase.Stop(ctx, valueobject.CalendarID(calendarId))
-	if err != nil {
+	if err := h.watchUsecase.Stop(ctx, valueobject.CalendarID(calendarId)); err != nil {
 		return fmt.Errorf("fail to stop watch: %w", err)
 	}
 
