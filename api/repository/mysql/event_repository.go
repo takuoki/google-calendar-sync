@@ -237,31 +237,37 @@ func (tx *mysqlTransaction) cancelEventInstancesWithAfter(ctx context.Context,
 	return updatedCount, nil
 }
 
-func (r *MysqlRepository) DeleteAllEventsForMain(ctx context.Context, m *testing.M) error {
-	err := r.deleteAllEvents(ctx)
+func (r *MysqlRepository) DeleteAllEventsForMain(ctx context.Context, m *testing.M) (updatedCount int, err error) {
+	updatedCount, err = r.deleteAllEvents(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to delete all events: %w", err)
+		return 0, fmt.Errorf("fail to delete all events: %w", err)
 	}
 
-	return nil
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) DeleteAllEvents(ctx context.Context, t *testing.T) error {
+func (r *MysqlRepository) DeleteAllEvents(ctx context.Context, t *testing.T) (updatedCount int, err error) {
 	t.Helper()
 
-	err := r.deleteAllEvents(ctx)
+	updatedCount, err = r.deleteAllEvents(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to delete all events: %w", err)
+		return 0, fmt.Errorf("fail to delete all events: %w", err)
 	}
 
-	return nil
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) deleteAllEvents(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM events")
+func (r *MysqlRepository) deleteAllEvents(ctx context.Context) (updatedCount int, err error) {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM events")
 	if err != nil {
-		return fmt.Errorf("fail to delete all events: %w", err)
+		return 0, fmt.Errorf("fail to delete all events: %w", err)
 	}
 
-	return nil
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("fail to get affected rows: %w", err)
+	}
+	updatedCount = int(affectedRows)
+
+	return updatedCount, nil
 }

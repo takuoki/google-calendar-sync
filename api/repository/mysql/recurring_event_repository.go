@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/takuoki/google-calendar-sync/api/domain/constant"
@@ -61,7 +62,7 @@ func (r *MysqlRepository) ListActiveRecurringEventsWithIDs(ctx context.Context,
 func (r *MysqlRepository) ListActiveRecurringEventsWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
 	[]entity.RecurringEvent, error) {
 
-	// TODO: recurrence の UNTIL を考慮し、有効期限が切れたイベントも除外したい
+	// TODO (やる): recurrence の UNTIL を考慮し、有効期限が切れたイベントも除外したい
 	// 事前に UNTIL をカラムに保存しておく必要がある
 	rows, err := r.db.QueryContext(
 		ctx,
@@ -200,4 +201,39 @@ func (tx *mysqlTransaction) updateRecurringEvent(ctx context.Context, recurringE
 	}
 
 	return nil
+}
+
+func (r *MysqlRepository) DeleteAllRecurringEventsForMain(ctx context.Context, m *testing.M) (updatedCount int, err error) {
+	updatedCount, err = r.deleteAllRecurringEvents(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("fail to delete all recurring events: %w", err)
+	}
+
+	return updatedCount, nil
+}
+
+func (r *MysqlRepository) DeleteAllRecurringEvents(ctx context.Context, t *testing.T) (updatedCount int, err error) {
+	t.Helper()
+
+	updatedCount, err = r.deleteAllRecurringEvents(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("fail to delete all recurring events: %w", err)
+	}
+
+	return updatedCount, nil
+}
+
+func (r *MysqlRepository) deleteAllRecurringEvents(ctx context.Context) (updatedCount int, err error) {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM recurring_events")
+	if err != nil {
+		return 0, fmt.Errorf("fail to delete all recurring events: %w", err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("fail to get affected rows: %w", err)
+	}
+	updatedCount = int(affectedRows)
+
+	return updatedCount, nil
 }

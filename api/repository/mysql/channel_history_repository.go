@@ -139,31 +139,37 @@ func (tx *mysqlTransaction) StopActiveChannels(
 	return nil
 }
 
-func (r *MysqlRepository) DeleteAllChannelHistoriesForMain(ctx context.Context, m *testing.M) error {
-	err := r.deleteAllChannelHistories(ctx)
+func (r *MysqlRepository) DeleteAllChannelHistoriesForMain(ctx context.Context, m *testing.M) (updatedCount int, err error) {
+	updatedCount, err = r.deleteAllChannelHistories(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to delete all channel histories: %w", err)
+		return 0, fmt.Errorf("fail to delete all channel histories: %w", err)
 	}
 
-	return nil
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) DeleteAllChannelHistories(ctx context.Context, t *testing.T) error {
+func (r *MysqlRepository) DeleteAllChannelHistories(ctx context.Context, t *testing.T) (updatedCount int, err error) {
 	t.Helper()
 
-	err := r.deleteAllChannelHistories(ctx)
+	updatedCount, err = r.deleteAllChannelHistories(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to delete all channel histories: %w", err)
+		return 0, fmt.Errorf("fail to delete all channel histories: %w", err)
 	}
 
-	return nil
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) deleteAllChannelHistories(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM channel_histories")
+func (r *MysqlRepository) deleteAllChannelHistories(ctx context.Context) (updatedCount int, err error) {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM channel_histories")
 	if err != nil {
-		return fmt.Errorf("fail to delete channel histories: %w", err)
+		return 0, fmt.Errorf("fail to delete channel histories: %w", err)
 	}
 
-	return nil
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("fail to get affected rows: %w", err)
+	}
+	updatedCount = int(affectedRows)
+
+	return updatedCount, nil
 }

@@ -76,16 +76,19 @@ func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
 }
 
 func cleanupForMain(ctx context.Context, m *testing.M) {
-	if err := mysqlRepo.DeleteAllSyncHistoriesForMain(ctx, m); err != nil {
+	if _, err := mysqlRepo.DeleteAllSyncHistoriesForMain(ctx, m); err != nil {
 		panic("fail to delete all sync histories: " + err.Error())
 	}
-	if err := mysqlRepo.DeleteAllChannelHistoriesForMain(ctx, m); err != nil {
+	if _, err := mysqlRepo.DeleteAllChannelHistoriesForMain(ctx, m); err != nil {
 		panic("fail to delete all channel histories: " + err.Error())
 	}
-	if err := mysqlRepo.DeleteAllEventsForMain(ctx, m); err != nil {
+	if _, err := mysqlRepo.DeleteAllEventsForMain(ctx, m); err != nil {
 		panic("fail to delete all events: " + err.Error())
 	}
-	if err := mysqlRepo.DeleteAllCalendarsForMain(ctx, m); err != nil {
+	if _, err := mysqlRepo.DeleteAllRecurringEventsForMain(ctx, m); err != nil {
+		panic("fail to delete all recurring events: " + err.Error())
+	}
+	if _, err := mysqlRepo.DeleteAllCalendarsForMain(ctx, m); err != nil {
 		panic("fail to delete all calendars: " + err.Error())
 	}
 }
@@ -93,16 +96,19 @@ func cleanupForMain(ctx context.Context, m *testing.M) {
 func cleanup(ctx context.Context, t *testing.T) {
 	t.Helper()
 
-	if err := mysqlRepo.DeleteAllSyncHistories(ctx, t); err != nil {
+	if _, err := mysqlRepo.DeleteAllSyncHistories(ctx, t); err != nil {
 		panic("fail to delete all sync histories: " + err.Error())
 	}
-	if err := mysqlRepo.DeleteAllChannelHistories(ctx, t); err != nil {
+	if _, err := mysqlRepo.DeleteAllChannelHistories(ctx, t); err != nil {
 		panic("fail to delete all channel histories: " + err.Error())
 	}
-	if err := mysqlRepo.DeleteAllEvents(ctx, t); err != nil {
+	if _, err := mysqlRepo.DeleteAllEvents(ctx, t); err != nil {
 		panic("fail to delete all events: " + err.Error())
 	}
-	if err := mysqlRepo.DeleteAllCalendars(ctx, t); err != nil {
+	if _, err := mysqlRepo.DeleteAllRecurringEvents(ctx, t); err != nil {
+		panic("fail to delete all recurring events: " + err.Error())
+	}
+	if _, err := mysqlRepo.DeleteAllCalendars(ctx, t); err != nil {
 		panic("fail to delete all calendars: " + err.Error())
 	}
 }
@@ -124,10 +130,13 @@ func assertEqualTime(t *testing.T, expected, actual *time.Time) bool {
 func assertEqualEvent(t *testing.T, expected, actual entity.Event) bool {
 	t.Helper()
 
+	if !assert.Equal(t, expected.CalendarID, actual.CalendarID) {
+		return false
+	}
 	if !assert.Equal(t, expected.ID, actual.ID) {
 		return false
 	}
-	if !assert.Equal(t, expected.CalendarID, actual.CalendarID) {
+	if !assert.Equal(t, expected.RecurringEventID, actual.RecurringEventID) {
 		return false
 	}
 	if !assert.Equal(t, expected.Summary, actual.Summary) {
