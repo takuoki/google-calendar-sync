@@ -29,6 +29,11 @@ type PostCalendarsCalendarIdJSONBody struct {
 	RefreshToken *string `json:"refreshToken"`
 }
 
+// PostSyncFutureInstanceParams defines parameters for PostSyncFutureInstance.
+type PostSyncFutureInstanceParams struct {
+	All *bool `form:"all,omitempty" json:"all,omitempty"`
+}
+
 // PostWatchParams defines parameters for PostWatch.
 type PostWatchParams struct {
 	All *bool `form:"all,omitempty" json:"all,omitempty"`
@@ -115,6 +120,9 @@ type ClientInterface interface {
 
 	PostCalendarsCalendarId(ctx context.Context, calendarId string, body PostCalendarsCalendarIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// PostSyncFutureInstance request
+	PostSyncFutureInstance(ctx context.Context, params *PostSyncFutureInstanceParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// PostSyncCalendarId request
 	PostSyncCalendarId(ctx context.Context, calendarId string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -142,6 +150,18 @@ func (c *Client) PostCalendarsCalendarIdWithBody(ctx context.Context, calendarId
 
 func (c *Client) PostCalendarsCalendarId(ctx context.Context, calendarId string, body PostCalendarsCalendarIdJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostCalendarsCalendarIdRequest(c.Server, calendarId, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostSyncFutureInstance(ctx context.Context, params *PostSyncFutureInstanceParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostSyncFutureInstanceRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -243,6 +263,55 @@ func NewPostCalendarsCalendarIdRequestWithBody(server string, calendarId string,
 	}
 
 	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewPostSyncFutureInstanceRequest generates requests for PostSyncFutureInstance
+func NewPostSyncFutureInstanceRequest(server string, params *PostSyncFutureInstanceParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/sync-future-instance/")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.All != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "all", runtime.ParamLocationQuery, *params.All); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
 
 	return req, nil
 }
@@ -446,6 +515,9 @@ type ClientWithResponsesInterface interface {
 
 	PostCalendarsCalendarIdWithResponse(ctx context.Context, calendarId string, body PostCalendarsCalendarIdJSONRequestBody, reqEditors ...RequestEditorFn) (*PostCalendarsCalendarIdResponse, error)
 
+	// PostSyncFutureInstanceWithResponse request
+	PostSyncFutureInstanceWithResponse(ctx context.Context, params *PostSyncFutureInstanceParams, reqEditors ...RequestEditorFn) (*PostSyncFutureInstanceResponse, error)
+
 	// PostSyncCalendarIdWithResponse request
 	PostSyncCalendarIdWithResponse(ctx context.Context, calendarId string, reqEditors ...RequestEditorFn) (*PostSyncCalendarIdResponse, error)
 
@@ -481,6 +553,34 @@ func (r PostCalendarsCalendarIdResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostCalendarsCalendarIdResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostSyncFutureInstanceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		Status *string `json:"status,omitempty"`
+	}
+	JSON404 *struct {
+		Message *string `json:"message,omitempty"`
+		Status  *string `json:"status,omitempty"`
+	}
+}
+
+// Status returns HTTPResponse.Status
+func (r PostSyncFutureInstanceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostSyncFutureInstanceResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -616,6 +716,15 @@ func (c *ClientWithResponses) PostCalendarsCalendarIdWithResponse(ctx context.Co
 	return ParsePostCalendarsCalendarIdResponse(rsp)
 }
 
+// PostSyncFutureInstanceWithResponse request returning *PostSyncFutureInstanceResponse
+func (c *ClientWithResponses) PostSyncFutureInstanceWithResponse(ctx context.Context, params *PostSyncFutureInstanceParams, reqEditors ...RequestEditorFn) (*PostSyncFutureInstanceResponse, error) {
+	rsp, err := c.PostSyncFutureInstance(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostSyncFutureInstanceResponse(rsp)
+}
+
 // PostSyncCalendarIdWithResponse request returning *PostSyncCalendarIdResponse
 func (c *ClientWithResponses) PostSyncCalendarIdWithResponse(ctx context.Context, calendarId string, reqEditors ...RequestEditorFn) (*PostSyncCalendarIdResponse, error) {
 	rsp, err := c.PostSyncCalendarId(ctx, calendarId, reqEditors...)
@@ -684,6 +793,44 @@ func ParsePostCalendarsCalendarIdResponse(rsp *http.Response) (*PostCalendarsCal
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParsePostSyncFutureInstanceResponse parses an HTTP response from a PostSyncFutureInstanceWithResponse call
+func ParsePostSyncFutureInstanceResponse(rsp *http.Response) (*PostSyncFutureInstanceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostSyncFutureInstanceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			Status *string `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest struct {
+			Message *string `json:"message,omitempty"`
+			Status  *string `json:"status,omitempty"`
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	}
 
@@ -847,6 +994,9 @@ type ServerInterface interface {
 	// Create a new calendar
 	// (POST /calendars/{calendarId}/)
 	PostCalendarsCalendarId(ctx echo.Context, calendarId string) error
+	// Sync future instance events for all calendars
+	// (POST /sync-future-instance/)
+	PostSyncFutureInstance(ctx echo.Context, params PostSyncFutureInstanceParams) error
 	// Sync calendar information with local DB
 	// (POST /sync/{calendarId}/)
 	PostSyncCalendarId(ctx echo.Context, calendarId string) error
@@ -879,6 +1029,24 @@ func (w *ServerInterfaceWrapper) PostCalendarsCalendarId(ctx echo.Context) error
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostCalendarsCalendarId(ctx, calendarId)
+	return err
+}
+
+// PostSyncFutureInstance converts echo context to params.
+func (w *ServerInterfaceWrapper) PostSyncFutureInstance(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params PostSyncFutureInstanceParams
+	// ------------- Optional query parameter "all" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "all", ctx.QueryParams(), &params.All)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter all: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostSyncFutureInstance(ctx, params)
 	return err
 }
 
@@ -977,6 +1145,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/calendars/:calendarId/", wrapper.PostCalendarsCalendarId)
+	router.POST(baseURL+"/sync-future-instance/", wrapper.PostSyncFutureInstance)
 	router.POST(baseURL+"/sync/:calendarId/", wrapper.PostSyncCalendarId)
 	router.POST(baseURL+"/watch/", wrapper.PostWatch)
 	router.DELETE(baseURL+"/watch/:calendarId/", wrapper.DeleteWatchCalendarId)
@@ -987,17 +1156,18 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/+yVTU/bQBCG/8pqzlESKCff+JCqXFrUVuqh4rCsJ7HpenfZGTdYkf97Nesk2EkoraAI",
-	"CU6xnNn5eP3Muyso3dxDtgIu2SJk8NH7hUV1ri26XEf1tXFGnV7OYAS/MFLpHWQwHR+Np9COwAd0OpSQ",
-	"wYfxdHwCIwiaC5KEE7NOQZPV5nGWtxP5L3hi+fUBo+bSu1kOGVx64k1dOt8eSUmjrpAxEmQ/pGfIUiEY",
-	"gdOVtG364RFv6zJiDhnHGkdApsBKpymbINHEsXQLaNurLhiJz3zeSITxjtGl7nQItjSpv8kNyeCrXqoQ",
-	"pXsuMU3btbFXQNLPI1Lxzf/ElCBHMrEM3An5Zd2pWhboVE2lW6jPpzUX6ng8VbrmAh2ve1DslfHOoWF5",
-	"5ALV7sc6vZyNRZPaWn0tn7Obf3fq7Rt/fYOGoW3bXdHSCwreUTff8fToCeoQa67TE97pKiTQqDYGieAv",
-	"2xvqtp3YRNSMuVpnm9fWNiL7yZP6rZBIL3DY8LamthF13ii8K4kPDDA6OC/G6OMTp92pLJFUV5WOjUQl",
-	"KZRWDpdqsw9SUC9kbbZZ4ErOTahx5l82U4zgBZdywN70NbGXHPGet462k+em7V475Tyrua9d/pKozS56",
-	"dYegJQE2/Sm5QGLVOdSy5EJZb7RVF2c99OTEGrulZlM8gtp3iXmAsNsaY3OPmLYW+ixtRRg437X3FrV7",
-	"/WylyRWxjmJqcy8rb7da0wGbe3bwPvlevYiLkhhlbf8/ew9V3qFPxFEJI7ktB/r0kOsY6jO353U5WmTc",
-	"R/AivU8J3g2vB6UP4eBN+6a8j33owXfont2QN3rM4d7h2nO8tw7X0Nr+RFfbtr8DAAD//8F5mfO9DQAA",
+	"H4sIAAAAAAAC/+yWTW/bOBCG/wrBs2M72Zx0ywd24cs2aAv0UOTAUGOLKUUynFEcwdB/L4ayFdlWmhZp",
+	"ggDxyYJMzserZ15yJY2be5mtJBmyIDP5n/cLC+JCWXC5iuJL7bQ4u5rJkbyHiMY7mcnp+Hg8lc1I+gBO",
+	"BSMz+c94Oj6VIxkUFcgBJ3odAierzeMsbyb8X/BI/OsDREXGu1kuM3nlkTZ58aLbkoJGVQJBRJl955pl",
+	"lhLJkXSq5LJ1f3mEu8pEyGVGsYKRRF1AqVKXdeDVSNG4hWya63YxIJ37vOYV2jsCl6pTIVijU32TW+TG",
+	"V71QIXL1ZCB125axl4DDzyNg8dX/gBQgB9TRBGqF/LyuVCwLcKJC4xbi01lFhTgZT4WqqABH6xoEeaG9",
+	"c6CJH6kAsfuxzq5mY9akslbd8Ods+9/tunvjb25Bk2yaZle09AKDd9j2dzI9foE6SIqq9AQPqgwJNKy0",
+	"BkT5m+Vt69Z1rCMoglyso80ra2uW/fRF9ZaAqBawXXCXU9kIKq8FPBikgQZGg/1CjD6+sNudzLwSq7JU",
+	"seZVSQqhhIOl2MwDJ1QLHpsuirzmfROsnT6aV1RFODIOSTkNzwwne8G/acdsveGJ2byrINaPw6mslf0p",
+	"7ETZwvPGewvKbaZyC77pe4LvmyJdCCQVmby55+9iO8VxgMXTv83i/76XL8LCIAHP7uuz+FTmbRbTqdHC",
+	"JTZwCbgHR7gvWI9R3tfj809ODt76hofG+8Uzaf/I4CsR+KidcJ7E3Fcuf0srnF328g7At6lP8AUnlu0J",
+	"ujRUCOu1suLyfBi7JQ/3M6glAzhY38H6Bq2PxREJI77NPeV0LUN95va8LgcLBPsIXqb3KcDB8HpQ+hAG",
+	"b4IfyvvIhx58Q/fADXmj5xzuANee4310uLat7Vd0NU3zMwAA//9qGi1pXRAAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

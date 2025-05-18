@@ -86,6 +86,42 @@ paths:
                   message:
                     type: string
                     example: calendarId not found
+  /sync-future-instance/:
+    post:
+      summary: Sync future instance events for all calendars
+      tags:
+        - Sync
+      parameters:
+        - name: all
+          in: query
+          required: false
+          schema:
+            type: boolean
+            example: true
+      responses:
+        '200':
+          description: Watch started for all calendars successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+        '404':
+          description: No calendars registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: error
+                  message:
+                    type: string
+                    example: No calendars registered
   /watch/:
     post:
       summary: Start watching all calendars

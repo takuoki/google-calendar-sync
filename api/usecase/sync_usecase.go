@@ -15,13 +15,15 @@ import (
 )
 
 const (
-	syncEventFrom         = -1 * 7 * 24 * time.Hour // 1 週間前
-	syncEventInstanceFrom = syncEventFrom
-	syncEventInstanceTo   = 365 * 24 * time.Hour // 1 年後
+	syncEventFrom              = -1 * 7 * 24 * time.Hour // 1 週間前
+	syncEventInstanceFrom      = syncEventFrom
+	syncEventInstanceTo        = 365 * 24 * time.Hour     // 1 年後
+	syncFutureInstanceInterval = (7 + 1) * 24 * time.Hour // 1 週間 + バッファ
 )
 
 type SyncUsecase interface {
 	Sync(ctx context.Context, calendarID valueobject.CalendarID) error
+	SyncFutureInstanceAll(ctx context.Context) error
 }
 
 type syncUsecase struct {
@@ -282,4 +284,111 @@ func (u *syncUsecase) convertToRecurringEventMap(recurringEvents []entity.Recurr
 	}
 
 	return recurringEventMap, nil
+}
+
+func (u *syncUsecase) SyncFutureInstanceAll(ctx context.Context) error {
+	calendars, err := u.databaseRepo.ListCalendars(ctx)
+	if err != nil {
+		return fmt.Errorf("fail to list calendars: %w", err)
+	}
+
+	now := u.clockService.Now()
+
+	for _, calendar := range calendars {
+		if err := u.syncFutureInstance(ctx, calendar.ID, now); err != nil {
+			return fmt.Errorf("fail to sync future instance (calendarID: %q): %w", calendar.ID, err)
+		}
+	}
+
+	return nil
+}
+
+func (u *syncUsecase) syncFutureInstance(ctx context.Context, calendarID valueobject.CalendarID, baseTime time.Time) error {
+
+	recurringEvents, err := u.databaseRepo.ListActiveRecurringEventsWithAfter(ctx, calendarID, baseTime.Add(syncEventFrom))
+	if err != nil {
+		return fmt.Errorf("fail to list recurring events: %w", err)
+	}
+
+	from := baseTime.Add(syncEventInstanceTo - syncFutureInstanceInterval)
+	to := baseTime.Add(syncEventInstanceTo)
+
+	shouldSaveRecurringEvents, eventInstanceMap, err := u.listFutureInstancesFromGoogleCalendar(ctx, calendarID, recurringEvents, from, to)
+	if err != nil {
+		return fmt.Errorf("fail to list future instances: %w", err)
+	}
+
+	if len(shouldSaveRecurringEvents) == 0 {
+		return nil
+	}
+
+	err = u.databaseRepo.RunTransaction(ctx, func(ctx context.Context, tx repository.DatabaseTransaction) error {
+
+		u.logger.Trace(ctx, "start transaction")
+
+		if err := tx.LockCalendar(ctx, calendarID); err != nil {
+			return fmt.Errorf("fail to lock calendar: %w", err)
+		}
+
+		updatedEventCount := 0
+
+		for _, recurringEvent := range shouldSaveRecurringEvents {
+			u.logger.Tracef(ctx, "sync recurring event: eventID=%q", recurringEvent.ID)
+
+			instances := eventInstanceMap[recurringEvent.ID]
+			// TODO: 生きているイベントが間違ってキャンセルされていないことを確認すべき
+			cnt, err := tx.SyncRecurringEventAndInstancesWithAfter(
+				ctx, recurringEvent, instances, from)
+			if err != nil {
+				return fmt.Errorf("fail to sync recurring events: %w", err)
+			}
+
+			updatedEventCount += cnt
+		}
+
+		// TODO: どのように記録を残すべきか要検討（syncToken があるわけではないので、必ずしも残さなくても良い）
+
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("fail to run transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (u *syncUsecase) listFutureInstancesFromGoogleCalendar(ctx context.Context,
+	calendarID valueobject.CalendarID, recurringEvents []entity.RecurringEvent, from, to time.Time) (
+	[]entity.RecurringEvent, map[valueobject.EventID][]entity.Event, error) {
+	// listEventInstancesFromGoogleCalendar と異なり、引数の recurringEvents は DB から取得したもの
+	// RecurringEvent 自体は更新されていないはずではあるが、 SyncRecurringEventAndInstancesWithAfter を利用したいため戻り値として返す
+
+	if len(recurringEvents) == 0 {
+		return nil, nil, nil
+	}
+
+	shouldSaveRecurringEvents := make([]entity.RecurringEvent, 0, len(recurringEvents))
+	eventInstanceMap := map[valueobject.EventID][]entity.Event{}
+
+	for _, recurringEvent := range recurringEvents {
+		if recurringEvent.Status != constant.EventStatusCancelled {
+			continue
+		}
+
+		instances, err := u.googleCalenderRepo.ListEventInstancesBetween(
+			ctx, calendarID, recurringEvent.ID, from, to)
+		if err != nil {
+			return nil, nil, fmt.Errorf("fail to list event instances: %w", err)
+		}
+
+		if len(instances) == 0 {
+			continue
+		}
+
+		shouldSaveRecurringEvents = append(shouldSaveRecurringEvents, recurringEvent)
+		eventInstanceMap[recurringEvent.ID] = instances
+	}
+
+	return shouldSaveRecurringEvents, eventInstanceMap, nil
 }
