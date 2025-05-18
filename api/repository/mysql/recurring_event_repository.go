@@ -62,7 +62,7 @@ func (r *MysqlRepository) ListActiveRecurringEventsWithIDs(ctx context.Context,
 func (r *MysqlRepository) ListActiveRecurringEventsWithAfter(ctx context.Context, calendarID valueobject.CalendarID, after time.Time) (
 	[]entity.RecurringEvent, error) {
 
-	// TODO (やる): recurrence の UNTIL を考慮し、有効期限が切れたイベントも除外したい
+	// TODO: recurrence の UNTIL を考慮し、有効期限が切れたイベントも除外したい
 	// 事前に UNTIL をカラムに保存しておく必要がある
 	rows, err := r.db.QueryContext(
 		ctx,
