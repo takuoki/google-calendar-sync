@@ -6,7 +6,9 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/takuoki/google-calendar-sync/api/domain/constant"
 	"github.com/takuoki/google-calendar-sync/api/domain/entity"
 	"github.com/takuoki/google-calendar-sync/api/domain/valueobject"
 )
@@ -61,9 +63,9 @@ func (r *MysqlRepository) CreateEvent(ctx context.Context, t *testing.T,
 func createEvent(ctx context.Context, db database, event entity.Event) error {
 	_, err := db.ExecContext(ctx,
 		"INSERT INTO events "+
-			"(id, calendar_id, summary, start, end, status) "+
-			"VALUES (?, ?, ?, ?, ?, ?)",
-		event.ID, event.CalendarID, event.Summary, event.Start, event.End, event.Status)
+			"(calendar_id, id, recurring_event_id, summary, start, end, status) "+
+			"VALUES (?, ?, ?, ?, ?, ?, ?)",
+		event.CalendarID, event.ID, event.RecurringEventID, event.Summary, event.Start, event.End, event.Status)
 	if err != nil {
 		return fmt.Errorf("fail to insert event: %w", err)
 	}
@@ -71,23 +73,18 @@ func createEvent(ctx context.Context, db database, event entity.Event) error {
 	return nil
 }
 
-func (tx *mysqlTransaction) SyncEvents(ctx context.Context, events []entity.Event) (int, error) {
+func (tx *mysqlTransaction) SyncEvents(ctx context.Context, calendarID valueobject.CalendarID, events []entity.Event) (int, error) {
 
 	if len(events) == 0 {
 		return 0, nil
 	}
 
-	calendarID := events[0].CalendarID
 	eventIDs := make([]valueobject.EventID, 0, len(events))
 	for _, event := range events {
 		if event.CalendarID != calendarID {
-			return 0, fmt.Errorf("all events must have the same calendar ID")
+			return 0, fmt.Errorf("all events must have the same calendar ID: expected %s, got %s", calendarID, event.CalendarID)
 		}
 		eventIDs = append(eventIDs, event.ID)
-	}
-
-	if err := tx.LockCalendar(ctx, calendarID); err != nil {
-		return 0, fmt.Errorf("fail to lock calendar: %w", err)
 	}
 
 	dbEventMap, err := tx.fetchEventMap(ctx, calendarID, eventIDs)
@@ -120,10 +117,11 @@ func (tx *mysqlTransaction) SyncEvents(ctx context.Context, events []entity.Even
 		}
 
 		// DB に存在するが、内容が異なる場合は更新
-		if err := tx.updateEvent(ctx, event); err != nil {
+		cnt, err := tx.updateEvent(ctx, event)
+		if err != nil {
 			return 0, fmt.Errorf("fail to update event: %w", err)
 		}
-		updateCount++
+		updateCount += cnt
 	}
 
 	return updateCount, nil
@@ -144,7 +142,7 @@ func (tx *mysqlTransaction) fetchEventMap(ctx context.Context,
 	}
 
 	query := fmt.Sprintf(
-		"SELECT id, calendar_id, summary, start, end, status "+
+		"SELECT id, calendar_id, recurring_event_id, summary, start, end, status "+
 			"FROM events WHERE calendar_id = ? AND id IN (%s)",
 		strings.Join(placeholders, ", "),
 	)
@@ -165,6 +163,7 @@ func (tx *mysqlTransaction) fetchEventMap(ctx context.Context,
 		err := rows.Scan(
 			&event.ID,
 			&event.CalendarID,
+			&event.RecurringEventID,
 			&event.Summary,
 			&event.Start,
 			&event.End,
@@ -179,43 +178,96 @@ func (tx *mysqlTransaction) fetchEventMap(ctx context.Context,
 	return eventMap, nil
 }
 
-func (tx *mysqlTransaction) updateEvent(ctx context.Context, event entity.Event) error {
-	_, err := tx.tx.ExecContext(ctx,
-		"UPDATE events SET summary = ?, start = ?, end = ?, status = ? "+
-			"WHERE id = ? AND calendar_id = ?",
-		event.Summary, event.Start, event.End, event.Status, event.ID, event.CalendarID)
+func (tx *mysqlTransaction) updateEvent(ctx context.Context, event entity.Event) (updatedCount int, err error) {
+	result, err := tx.tx.ExecContext(ctx,
+		"UPDATE events SET recurring_event_id = ?, summary = ?, start = ?, end = ?, status = ? "+
+			"WHERE calendar_id = ? AND id = ?",
+		event.RecurringEventID, event.Summary, event.Start, event.End, event.Status, event.CalendarID, event.ID)
 	if err != nil {
-		return fmt.Errorf("fail to update event: %w", err)
+		return 0, fmt.Errorf("fail to update event: %w", err)
 	}
 
-	return nil
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("fail to get affected rows: %w", err)
+	}
+	updatedCount = int(affectedRows)
+
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) DeleteAllEventsForMain(ctx context.Context, m *testing.M) error {
-	err := r.deleteAllEvents(ctx)
-	if err != nil {
-		return fmt.Errorf("fail to delete all events: %w", err)
+func (tx *mysqlTransaction) cancelEventInstancesWithAfter(ctx context.Context,
+	calendarID valueobject.CalendarID, recurringEventID valueobject.EventID, excludedEventIDs []valueobject.EventID,
+	after time.Time) (updatedCount int, err error) {
+
+	var query string
+	var args []interface{}
+
+	if len(excludedEventIDs) == 0 {
+		// excludedEventIDsが空の場合はid NOT IN 句は不要
+		query = "UPDATE events SET status = ? " +
+			"WHERE calendar_id = ? AND recurring_event_id = ? AND start >= ?"
+		args = []interface{}{constant.EventStatusCancelled, calendarID, recurringEventID, after}
+	} else {
+		placeholders := make([]string, len(excludedEventIDs))
+		for i := range excludedEventIDs {
+			placeholders[i] = "?"
+		}
+		query = "UPDATE events SET status = ? " +
+			"WHERE calendar_id = ? AND recurring_event_id = ? AND id NOT IN (" +
+			strings.Join(placeholders, ",") + ") AND start >= ?"
+		args = append(args, constant.EventStatusCancelled, calendarID, recurringEventID)
+		for _, id := range excludedEventIDs {
+			args = append(args, id)
+		}
+		args = append(args, after)
 	}
 
-	return nil
+	result, err := tx.tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("fail to update events: %w", err)
+	}
+
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("fail to get affected rows: %w", err)
+	}
+	updatedCount = int(affectedRows)
+
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) DeleteAllEvents(ctx context.Context, t *testing.T) error {
+func (r *MysqlRepository) DeleteAllEventsForMain(ctx context.Context, m *testing.M) (updatedCount int, err error) {
+	updatedCount, err = r.deleteAllEvents(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("fail to delete all events: %w", err)
+	}
+
+	return updatedCount, nil
+}
+
+func (r *MysqlRepository) DeleteAllEvents(ctx context.Context, t *testing.T) (updatedCount int, err error) {
 	t.Helper()
 
-	err := r.deleteAllEvents(ctx)
+	updatedCount, err = r.deleteAllEvents(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to delete all events: %w", err)
+		return 0, fmt.Errorf("fail to delete all events: %w", err)
 	}
 
-	return nil
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) deleteAllEvents(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM events")
+func (r *MysqlRepository) deleteAllEvents(ctx context.Context) (updatedCount int, err error) {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM events")
 	if err != nil {
-		return fmt.Errorf("fail to delete all events: %w", err)
+		return 0, fmt.Errorf("fail to delete all events: %w", err)
 	}
 
-	return nil
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("fail to get affected rows: %w", err)
+	}
+	updatedCount = int(affectedRows)
+
+	return updatedCount, nil
 }

@@ -10,4 +10,15 @@ func (c CalendarID) ToChannelID() string {
 
 type EventID string
 
+func NewEventID(id string) *EventID {
+	if id == "" {
+		return nil
+	}
+	return pointer(EventID(id))
+}
+
 type ResourceID string
+
+func pointer[T any](v T) *T {
+	return &v
+}

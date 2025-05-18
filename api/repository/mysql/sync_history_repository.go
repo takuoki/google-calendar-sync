@@ -76,31 +76,37 @@ func createSyncHistory(
 	return nil
 }
 
-func (r *MysqlRepository) DeleteAllSyncHistoriesForMain(ctx context.Context, m *testing.M) error {
-	err := r.deleteAllSyncHistories(ctx)
+func (r *MysqlRepository) DeleteAllSyncHistoriesForMain(ctx context.Context, m *testing.M) (updatedCount int, err error) {
+	updatedCount, err = r.deleteAllSyncHistories(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to delete all sync histories: %w", err)
+		return 0, fmt.Errorf("fail to delete all sync histories: %w", err)
 	}
 
-	return nil
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) DeleteAllSyncHistories(ctx context.Context, t *testing.T) error {
+func (r *MysqlRepository) DeleteAllSyncHistories(ctx context.Context, t *testing.T) (updatedCount int, err error) {
 	t.Helper()
 
-	err := r.deleteAllSyncHistories(ctx)
+	updatedCount, err = r.deleteAllSyncHistories(ctx)
 	if err != nil {
-		return fmt.Errorf("fail to delete all sync histories: %w", err)
+		return 0, fmt.Errorf("fail to delete all sync histories: %w", err)
 	}
 
-	return nil
+	return updatedCount, nil
 }
 
-func (r *MysqlRepository) deleteAllSyncHistories(ctx context.Context) error {
-	_, err := r.db.ExecContext(ctx, "DELETE FROM sync_histories")
+func (r *MysqlRepository) deleteAllSyncHistories(ctx context.Context) (updatedCount int, err error) {
+	result, err := r.db.ExecContext(ctx, "DELETE FROM sync_histories")
 	if err != nil {
-		return fmt.Errorf("fail to delete all sync histories: %w", err)
+		return 0, fmt.Errorf("fail to delete all sync histories: %w", err)
 	}
 
-	return nil
+	affectedRows, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("fail to get affected rows: %w", err)
+	}
+	updatedCount = int(affectedRows)
+
+	return updatedCount, nil
 }
