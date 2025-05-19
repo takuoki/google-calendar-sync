@@ -15,9 +15,11 @@ import (
 )
 
 const (
-	syncEventFrom              = -1 * 7 * 24 * time.Hour // 1 週間前
-	syncEventInstanceFrom      = syncEventFrom
-	syncEventInstanceTo        = 365 * 24 * time.Hour     // 1 年後
+	syncEventFrom         = -1 * 7 * 24 * time.Hour // 1 週間前
+	syncEventInstanceFrom = syncEventFrom
+	syncEventInstanceTo   = 365 * 24 * time.Hour // 1 年後
+
+	// sync-future-instance が実行される間隔と揃えておく必要がある
 	syncFutureInstanceInterval = (7 + 1) * 24 * time.Hour // 1 週間 + バッファ
 )
 
@@ -295,6 +297,7 @@ func (u *syncUsecase) SyncFutureInstanceAll(ctx context.Context) error {
 	now := u.clockService.Now()
 
 	for _, calendar := range calendars {
+		// TODO: カレンダーの数によっては時間がかかるため、非同期化や分散処理の検討が必要
 		if err := u.syncFutureInstance(ctx, calendar.ID, now); err != nil {
 			return fmt.Errorf("fail to sync future instance (calendarID: %q): %w", calendar.ID, err)
 		}
@@ -372,7 +375,7 @@ func (u *syncUsecase) listFutureInstancesFromGoogleCalendar(ctx context.Context,
 	eventInstanceMap := map[valueobject.EventID][]entity.Event{}
 
 	for _, recurringEvent := range recurringEvents {
-		if recurringEvent.Status != constant.EventStatusCancelled {
+		if recurringEvent.Status == constant.EventStatusCancelled {
 			continue
 		}
 
