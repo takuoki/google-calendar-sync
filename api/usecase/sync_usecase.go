@@ -349,7 +349,9 @@ func (u *syncUsecase) syncFutureInstance(ctx context.Context, calendarID valueob
 			updatedEventCount += cnt
 		}
 
-		// TODO: どのように記録を残すべきか要検討（syncToken があるわけではないので、必ずしも残さなくても良い）
+		if err := tx.CreateSyncFutureInstanceHistory(ctx, calendarID, baseTime, updatedEventCount); err != nil {
+			return fmt.Errorf("fail to create sync future instance history: %w", err)
+		}
 
 		return nil
 	})
