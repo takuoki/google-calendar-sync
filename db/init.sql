@@ -58,3 +58,13 @@ CREATE TABLE IF NOT EXISTS sync_histories (
     PRIMARY KEY (calendar_id, sync_time),
     FOREIGN KEY (calendar_id) REFERENCES calendars(id)
 );
+
+CREATE TABLE IF NOT EXISTS sync_future_instance_histories (
+    calendar_id VARCHAR(255),
+    sync_time TIMESTAMP(3) NOT NULL,
+    updated_event_count INT NOT NULL,
+    created_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (calendar_id, sync_time),
+    FOREIGN KEY (calendar_id) REFERENCES calendars(id)
+);

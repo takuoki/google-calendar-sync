@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"context"
 	"errors"
 	"net/http"
 
@@ -13,7 +12,7 @@ import (
 func ErrorMiddleware(logger applog.Logger) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			ctx := context.Background()
+			ctx := c.Request().Context()
 			if err := next(c); err != nil {
 				var e *domain.ClientError
 				if errors.As(err, &e) {

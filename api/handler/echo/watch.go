@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"context"
 	"fmt"
 
 	echo "github.com/labstack/echo/v4"
@@ -11,7 +10,7 @@ import (
 )
 
 func (h *handler) PostWatch(c echo.Context, params openapi.PostWatchParams) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	if params.All != nil && !*params.All {
 		return domain.AllParameterFalseError
@@ -25,7 +24,7 @@ func (h *handler) PostWatch(c echo.Context, params openapi.PostWatchParams) erro
 }
 
 func (h *handler) PostWatchCalendarId(c echo.Context, calendarId string) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	if err := h.watchUsecase.Start(ctx, valueobject.CalendarID(calendarId)); err != nil {
 		return fmt.Errorf("fail to watch calendar: %w", err)
@@ -35,7 +34,7 @@ func (h *handler) PostWatchCalendarId(c echo.Context, calendarId string) error {
 }
 
 func (h *handler) DeleteWatchCalendarId(c echo.Context, calendarId string) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	if err := h.watchUsecase.Stop(ctx, valueobject.CalendarID(calendarId)); err != nil {
 		return fmt.Errorf("fail to stop watch: %w", err)

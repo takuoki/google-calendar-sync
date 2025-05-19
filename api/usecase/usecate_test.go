@@ -76,6 +76,9 @@ func waitForDatabaseReady(ctx context.Context, db *sql.DB) error {
 }
 
 func cleanupForMain(ctx context.Context, m *testing.M) {
+	if _, err := mysqlRepo.DeleteAllSyncFutureInstanceHistoriesForMain(ctx, m); err != nil {
+		panic("fail to delete all sync future instance histories: " + err.Error())
+	}
 	if _, err := mysqlRepo.DeleteAllSyncHistoriesForMain(ctx, m); err != nil {
 		panic("fail to delete all sync histories: " + err.Error())
 	}
@@ -96,6 +99,9 @@ func cleanupForMain(ctx context.Context, m *testing.M) {
 func cleanup(ctx context.Context, t *testing.T) {
 	t.Helper()
 
+	if _, err := mysqlRepo.DeleteAllSyncFutureInstanceHistories(ctx, t); err != nil {
+		panic("fail to delete all sync future instance histories: " + err.Error())
+	}
 	if _, err := mysqlRepo.DeleteAllSyncHistories(ctx, t); err != nil {
 		panic("fail to delete all sync histories: " + err.Error())
 	}

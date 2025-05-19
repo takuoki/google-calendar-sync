@@ -66,4 +66,12 @@ type DatabaseTransaction interface {
 		nextSyncToken string,
 		updatedEventCount int,
 	) error
+
+	// sync_future_instance_histories
+	CreateSyncFutureInstanceHistory(
+		ctx context.Context,
+		calendarID valueobject.CalendarID,
+		syncTime time.Time,
+		updatedEventCount int,
+	) error
 }
