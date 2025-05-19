@@ -339,7 +339,6 @@ func (u *syncUsecase) syncFutureInstance(ctx context.Context, calendarID valueob
 			u.logger.Tracef(ctx, "sync recurring event: eventID=%q", recurringEvent.ID)
 
 			instances := eventInstanceMap[recurringEvent.ID]
-			// TODO: 生きているイベントが間違ってキャンセルされていないことを確認すべき
 			cnt, err := tx.SyncRecurringEventAndInstancesWithAfter(
 				ctx, recurringEvent, instances, from)
 			if err != nil {
