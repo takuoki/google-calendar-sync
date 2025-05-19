@@ -98,6 +98,8 @@ paths:
           schema:
             type: boolean
             example: true
+          description: |
+            This parameter is provided to ensure that the user understands this endpoint will affect all calendars. If you do not explicitly specify true, the request will result in an error.
       responses:
         '200':
           description: Watch started for all calendars successfully
@@ -134,6 +136,8 @@ paths:
           schema:
             type: boolean
             example: true
+          description: |
+            This parameter is provided to ensure that the user understands this endpoint will affect all calendars. If you do not explicitly specify true, the request will result in an error.
       responses:
         '200':
           description: Watch started for all calendars successfully

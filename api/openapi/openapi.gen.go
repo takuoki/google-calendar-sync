@@ -31,11 +31,13 @@ type PostCalendarsCalendarIdJSONBody struct {
 
 // PostSyncFutureInstanceParams defines parameters for PostSyncFutureInstance.
 type PostSyncFutureInstanceParams struct {
+	// All This parameter is provided to ensure that the user understands this endpoint will affect all calendars. If you do not explicitly specify true, the request will result in an error.
 	All *bool `form:"all,omitempty" json:"all,omitempty"`
 }
 
 // PostWatchParams defines parameters for PostWatch.
 type PostWatchParams struct {
+	// All This parameter is provided to ensure that the user understands this endpoint will affect all calendars. If you do not explicitly specify true, the request will result in an error.
 	All *bool `form:"all,omitempty" json:"all,omitempty"`
 }
 
@@ -1156,18 +1158,20 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"H4sIAAAAAAAC/+xWTW8bNxD9KwOeFUlJfdLNidFCl9ZoA/TQ5kCTs1qmFMlwhpYXxv73YriSvLKUuoWb",
+	"IIh18no1H2+G773lvXKhiWpxr9ixR7VQP8W48gjvtMdgdYbfumDg8nqpJuoWM7kY1ELNp6+nc9VPVEwY",
+	"dHJqoX6YzqcXaqKS5pak4MxsS9Dsfve4tP1MfkuRWP7GhFmzi2Fp1UJdR+JdX3q3T6lFs14jYya1+EMw",
+	"q0VtpCYq6LXANuPwjJ+Ky2jVgnPBiSLT4lrXKbsk0cTZhZXq+w9DMBK/jbaTCBMDY6jodEremYpv9pFk",
+	"8PtRqZQFPTus0w4wjhpI+SYjte/jX1gLWCSTXeJhkb9ukcKmxQCFXFjBL5eFW3gznYMu3GLgLQbgCCaG",
+	"gIblkVuEx4d1eb2cyk6K9/pGjnOY//HU+zfx5iMaVn3fP15afUEpBhrmezN//YztEGsu9Qnv9DpVolEx",
+	"BonUv4R3uLf9xCajZrSwrdYU7ztZ+8Wz8K6RSK/wEPC+p/YZte0A7xzxiQEmJ+fFnGN+5rSPOksklfVa",
+	"506i6ipAQ8AN7PQgDfVKZLOvoj5I3oy6YF41hUvGVy4Q62DwCXGKF/xYM5bbhGNtHiJ/3zqCfQTIPzne",
+	"OotWKIyBSkbgVnOlcyHMUILFLNUtAUs6BpuiCwwb5z3ophEBaO/3M9IUlg10sYCNECID3slRO/YdUELj",
+	"mg6qEGqTrd6HahmpeAYXQAeoJzT9M6jJ4DCfCubuwWK092rsJfujPRDZTYweddh5y4GE5t+ShH7XbFog",
+	"1ln008R8uNMTirr4vxX1cxz1y7hyxCgO9OUV9bnOh4qq375BIrCTCOAtBqbjhY2UJnkjlf2X75+kfsVP",
+	"37dLz7r7Bw5+IQY+7K4aRxNLsF/T0JdXo74nyLfDB3JNy+vhHrBx3IKPRnu4enuadhsR9xNUqwZwNvCz",
+	"gX/HBi7LgSoGuVl/zq8HJYyVc+TYFj0yHgvpqr6vBc62PSJlTOnkrfxFOTjHNCLfqTv5jnmTp3z6TK4j",
+	"x3vp5Dq0tn9iV9/3fwcAAP//Q1ekQukRAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
