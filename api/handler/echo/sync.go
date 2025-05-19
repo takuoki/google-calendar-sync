@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"context"
 	"fmt"
 
 	echo "github.com/labstack/echo/v4"
@@ -11,7 +10,7 @@ import (
 )
 
 func (h *handler) PostSyncCalendarId(c echo.Context, calendarID string) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	if err := h.syncUsecase.Sync(ctx, valueobject.CalendarID(calendarID)); err != nil {
 		return fmt.Errorf("fail to sync calendar: %w", err)
@@ -21,7 +20,7 @@ func (h *handler) PostSyncCalendarId(c echo.Context, calendarID string) error {
 }
 
 func (h *handler) PostSyncFutureInstance(c echo.Context, params openapi.PostSyncFutureInstanceParams) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	if params.All != nil && !*params.All {
 		return domain.AllParameterFalseError

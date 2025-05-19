@@ -1,7 +1,6 @@
 package echo
 
 import (
-	"context"
 	"fmt"
 
 	echo "github.com/labstack/echo/v4"
@@ -11,7 +10,7 @@ import (
 )
 
 func (h *handler) PostCalendarsCalendarId(c echo.Context, calendarID string) error {
-	ctx := context.Background()
+	ctx := c.Request().Context()
 
 	var req openapi.PostCalendarsCalendarIdJSONBody
 	if err := c.Bind(&req); err != nil {
